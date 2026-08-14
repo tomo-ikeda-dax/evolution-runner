@@ -686,6 +686,87 @@
       text-align: center;
     }
 
+    /* ==========================================================================
+       オープニング映像
+       ==========================================================================
+       素材は 720x1280 の縦動画で、ゲーム枠(16:9)とは向きが真逆。
+       中央を切り抜くと顔のアップで頭が切れるため、全体を表示(contain)し、
+       左右の余白は同じ映像のぼかし画像で埋めて「額縁」に見せている。 */
+    /* ゲーム枠(16:9)の中に収めると縦動画が極端に細くなるため、
+       オープニングの間だけ画面全体を使う。横持ちスマホで映像幅が7割増える。
+       回転案内(z-index 100)には譲る。 */
+    .intro-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s;
+    }
+
+    .intro-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.6s, visibility 0s linear 0.6s;
+    }
+
+    .intro-backdrop {
+      position: absolute;
+      inset: 0;
+      background: url('assets/intro_bg.jpg') center / cover no-repeat;
+      filter: blur(22px) brightness(0.45);
+      transform: scale(1.2);   /* ぼかしの縁が見えないよう少し拡大 */
+    }
+
+    .intro-video {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+    }
+
+    .intro-skip {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 2;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      border-radius: 20px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 18px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .intro-skip:hover, .intro-skip:active {
+      background: rgba(0, 242, 254, 0.25);
+      border-color: var(--accent-neon);
+    }
+
+    /* 再生位置を示す細い進捗バー (あと何秒かが分かると待てる) */
+    .intro-progress {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 3px;
+      width: 0%;
+      z-index: 2;
+      background: linear-gradient(90deg, #00f2fe, #f6d365);
+      box-shadow: 0 0 8px rgba(0, 242, 254, 0.8);
+    }
+
+    @media (max-height: 440px) {
+      .intro-skip { font-size: 11px; padding: 5px 14px; right: 10px; bottom: 10px; }
+    }
+
     /* ===== 大画面ではUIも一緒に拡大する =====
        ゲーム枠だけ大きくすると、相対的に文字が小さくなって読みにくくなるため。 */
     @media (min-width: 1300px) and (min-height: 780px) {
@@ -1063,6 +1144,18 @@
           <span>❤️ HP:</span> <span id="hud-hp" style="color:#ff0844; font-weight:bold;">❤❤❤</span>
         </div>
       </div>
+    </div>
+
+    <!-- オープニング映像 (ゲーム開始の合図とともに再生) -->
+    <div class="intro-screen hidden" id="introScreen">
+      <div class="intro-backdrop"></div>
+      <video class="intro-video" id="introVideo"
+             playsinline webkit-playsinline preload="auto"
+             poster="assets/intro_bg.jpg">
+        <source src="assets/intro.mp4" type="video/mp4">
+      </video>
+      <div class="intro-progress" id="introProgress"></div>
+      <button class="intro-skip" id="btnSkipIntro">スキップ ▶</button>
     </div>
 
     <!-- 全画面ボタン: HUDにもオーバーレイにも重ならない画面上端中央に置き、
@@ -2088,6 +2181,10 @@
       if (rotateBlocked) {
         setBoost(false);
         audio.stopEngine();   // 再開時は setEngine が毎フレーム鳴らし直す
+        try { introVideo.pause(); } catch (e) {}   // 回転案内の裏で映像だけ進むのを防ぐ
+      } else if (introScreen && !introScreen.classList.contains('hidden')) {
+        const p = introVideo.play();
+        if (p && p.catch) p.catch(() => {});
       }
     }
     if (portraitQuery.addEventListener) {
@@ -4371,8 +4468,77 @@
       render();
     }
 
+    /* ==========================================================================
+       Opening Movie
+       ==========================================================================
+       ブラウザは音つきの自動再生を禁止しているため、ページ読み込み時ではなく
+       「ゲームスタート」を押した瞬間（＝ユーザー操作）に再生する。
+       こうすればナレーションと効果音をそのまま鳴らせる。
+       再生できなかった場合は必ずゲームへ進ませる（映像で詰まらせない）。 */
+    const introScreen = document.getElementById('introScreen');
+    const introVideo = document.getElementById('introVideo');
+    const introProgress = document.getElementById('introProgress');
+    let introDone = false;      // このページ読み込みで再生済みか
+    let introTimer = null;
+
+    function finishIntro() {
+      if (introScreen.classList.contains('hidden')) return;
+      clearTimeout(introTimer);
+      introScreen.classList.add('hidden');
+      try { introVideo.pause(); } catch (e) {}
+      startGame();
+    }
+
+    function playIntroThenStart() {
+      if (introDone) { startGame(); return; }
+      introDone = true;
+
+      audio.init();   // このユーザー操作でオーディオも有効化しておく
+      document.getElementById('startScreen').classList.add('hidden');
+      introScreen.classList.remove('hidden');
+      introProgress.style.width = '0%';
+
+      try { introVideo.currentTime = 0; } catch (e) {}
+      introVideo.muted = false;
+      introVideo.volume = 1;
+
+      const played = introVideo.play();
+      if (played && played.catch) {
+        played.catch(() => {
+          // 音つきが拒否されたらミュートで再挑戦。それも駄目ならゲームへ進む
+          introVideo.muted = true;
+          const retry = introVideo.play();
+          if (retry && retry.catch) retry.catch(finishIntro);
+        });
+      }
+
+      // 通信が遅い・コーデック非対応などで再生が始まらない場合の保険
+      introTimer = setTimeout(() => {
+        if (introVideo.paused || introVideo.currentTime === 0) finishIntro();
+      }, 5000);
+    }
+
+    introVideo.addEventListener('ended', finishIntro);
+    introVideo.addEventListener('error', finishIntro);
+    introVideo.addEventListener('timeupdate', () => {
+      if (!introVideo.duration) return;
+      introProgress.style.width = (introVideo.currentTime / introVideo.duration * 100) + '%';
+    });
+    document.getElementById('btnSkipIntro').addEventListener('click', (e) => {
+      e.preventDefault();
+      finishIntro();
+    });
+    // キー操作でも飛ばせるようにする (誤爆を避けるため画面タップでは飛ばさない)
+    window.addEventListener('keydown', (e) => {
+      if (!introScreen.classList.contains('hidden') &&
+          ['Escape', 'Space', 'Enter', 'KeyX'].includes(e.code)) {
+        e.preventDefault();
+        finishIntro();
+      }
+    });
+
     // イベントリスナーバインド
-    document.getElementById('btnStart').addEventListener('click', startGame);
+    document.getElementById('btnStart').addEventListener('click', playIntroThenStart);
     document.getElementById('btnRestart').addEventListener('click', startGame);
     document.getElementById('btnClearRestart').addEventListener('click', startGame);
 
