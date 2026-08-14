@@ -51,10 +51,12 @@
 
     /* 画面に収まる最大サイズを「幅」と「高さ」の両方から決める。
        幅だけで決めると、横向きスマホでコンテナが画面より縦に大きくなり
-       スタートボタンが画面外に出てしまう。 */
+       スタートボタンが画面外に出てしまう。
+       上限の 1600px はキャンバス実解像度 800x450 のちょうど2倍。
+       これ以上引き伸ばすとドットが粗くなりすぎるため、ここで止めている。 */
     #game-container {
       position: relative;
-      width: min(900px, 100%, calc((100dvh - 60px) * 16 / 9));
+      width: min(1600px, 100%, calc((100dvh - 56px) * 16 / 9));
       aspect-ratio: 16 / 9;
       background: #000;
       border: 4px solid #303e5c;
@@ -336,7 +338,9 @@
 
     .panel-columns > * { flex: 1 1 0; min-width: 0; margin-bottom: 0 !important; }
 
-    @media (max-width: 640px) {
+    /* 1カラムに落とすと縦に長くなり、横持ちスマホではボタンが画面外に出る。
+       小型端末の横持ち(568x320程度)でも2カラムを保てるよう閾値を低くしている。 */
+    @media (max-width: 470px) {
       .panel-columns { flex-direction: column; gap: 8px; }
     }
 
@@ -682,6 +686,98 @@
       text-align: center;
     }
 
+    /* ===== 大画面ではUIも一緒に拡大する =====
+       ゲーム枠だけ大きくすると、相対的に文字が小さくなって読みにくくなるため。 */
+    @media (min-width: 1300px) and (min-height: 780px) {
+      .game-title { font-size: 26px; margin-bottom: 8px; }
+      .game-subtitle { font-size: 16px; margin-bottom: 14px; }
+      .panel-columns { max-width: 1020px; gap: 16px; margin-bottom: 16px; }
+      .tips-box { font-size: 15px; line-height: 1.75; padding: 12px 18px; border-radius: 12px; }
+      .codex { padding: 14px 18px; }
+      .codex-title { font-size: 14px; margin-bottom: 10px; }
+      .codex-list { gap: 8px; margin-bottom: 10px; }
+      .codex-chip { min-width: 74px; font-size: 12px; padding: 7px 10px; }
+      .codex-chip span:first-child { font-size: 24px; }
+      .codex-best { font-size: 13px; }
+      .btn-main { font-size: 24px; padding: 14px 44px; margin-top: 8px; }
+      .key-guides { font-size: 15px; gap: 24px; margin-top: 14px; }
+      .key-pill { font-size: 12px; padding: 3px 10px; }
+
+      .panel-heading { font-size: 14px; margin-bottom: 8px; }
+      .journey-row { font-size: 14px; padding: 7px 13px; gap: 10px; }
+      .journey-icon { font-size: 19px; }
+      .journey-name { width: 78px; }
+      .journey-val { font-size: 13px; }
+      .record-flash { font-size: 15px; line-height: 1.8; margin-bottom: 12px; }
+      .stats-box { font-size: 15px; line-height: 2; padding: 13px 20px; }
+
+      .badge { font-size: 17px; padding: 8px 15px; }
+      .era-badge { font-size: 18px; }
+      .speed-panel, .boost-gauge-container { width: 290px; }
+      #speed-value { font-size: 30px; }
+      .speed-unit { font-size: 13px; }
+      .speed-hint { font-size: 12px; }
+      .boost-gauge-label { font-size: 13px; }
+      .evo-node { font-size: 19px; }
+      .evo-link { width: 13px; }
+      .fs-btn { font-size: 17px; padding: 6px 13px; }
+
+      .evo-cutin-icon { font-size: 56px; }
+      .evo-cutin-title { font-size: 28px; }
+      .evo-cutin-name { font-size: 16px; }
+      .evo-cutin-unlock { font-size: 16px; padding: 8px 18px; }
+      .evo-cutin-step { font-size: 12px; }
+      .evo-cutin .evo-node { font-size: 26px; }
+    }
+
+    /* ===== 全画面表示 =====
+       フルスクリーン時は UA が width/height 100% を当ててくるため、
+       16:9 を保つよう自前で指定し直し、margin:auto で中央に置く。 */
+    #game-container:fullscreen {
+      width: min(100vw, calc(100vh * 16 / 9));
+      max-width: none;
+      margin: auto;
+      border-width: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    #game-container:-webkit-full-screen {
+      width: min(100vw, calc(100vh * 16 / 9));
+      max-width: none;
+      margin: auto;
+      border-width: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    /* 画面上端中央。HUDの左右カラムにもオーバーレイの中身にも重ならない唯一の空き地。
+       z-index はオーバーレイ(30)より上にして、スタート画面からも押せるようにする。 */
+    .fs-btn {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      cursor: pointer;
+      background: rgba(20, 24, 38, 0.75);
+      border: 2px solid #4a5568;
+      border-radius: 8px;
+      color: #a0aec0;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1;
+      padding: 4px 10px;
+      transition: border-color 0.15s, color 0.15s, opacity 0.15s;
+      opacity: 0.5;
+    }
+
+    .fs-btn:hover, .fs-btn:active {
+      opacity: 1;
+      border-color: var(--accent-neon);
+      color: var(--accent-neon);
+    }
+
     /* ==========================================================================
        Mobile Optimization
        ==========================================================================
@@ -855,6 +951,19 @@
       .evo-cutin-unlock { font-size: 9px; padding: 3px 8px; }
     }
 
+    /* --- 極端に縦が狭い端末（画面高360px級のスマホ横持ち） --- */
+    @media (max-height: 310px) {
+      .tips-box { max-height: 82px; }
+      .codex-best { display: none; }
+      .journey { max-height: 88px; }
+      .record-flash { max-height: 38px; }
+      .stats-box { font-size: 9px; line-height: 1.4; padding: 5px 9px; }
+      .journey-row { padding: 2px 6px; }
+      .btn-main { font-size: 13px; padding: 5px 18px; }
+      #gameOverScreen h2, #clearScreen h2 { font-size: 14px !important; }
+      .panel-columns { margin-bottom: 4px; }
+    }
+
     /* --- タッチ操作ボタン --- */
     /* マウスがある環境では邪魔なだけなので隠す */
     @media (hover: hover) and (pointer: fine) {
@@ -956,6 +1065,10 @@
       </div>
     </div>
 
+    <!-- 全画面ボタン: HUDにもオーバーレイにも重ならない画面上端中央に置き、
+         スタート画面・プレイ中・リザルトのどこからでも押せるようにする -->
+    <button class="fs-btn" id="btnFullscreen" title="全画面表示 (F)">⛶</button>
+
     <!-- ニアミス・コンボ表示 -->
     <div class="combo-pop" id="comboPop">
       <div class="combo-count" id="comboCount">×2</div>
@@ -1028,10 +1141,12 @@
         <div><span class="key-pill">SPACE</span>/<span class="key-pill">↑</span> ジャンプ</div>
         <div><span class="key-pill">X</span>/<span class="key-pill">↓</span> 攻撃</div>
         <div><span class="key-pill">SHIFT</span> ブースト</div>
+        <div><span class="key-pill">F</span> 全画面</div>
       </div>
 
       <div class="touch-guides">
-        画面のどこをタップしてもジャンプ ／ ⚡ ブースト ／ ⚔️ 攻撃
+        画面のどこをタップしてもジャンプ ／ ⚡ ブースト ／ ⚔️ 攻撃<br>
+        上の <b>⛶</b> を押すと全画面になり、さらに大きく遊べます
       </div>
     </div>
 
@@ -1796,6 +1911,10 @@
         e.preventDefault();
         if (!e.repeat) setBoost(true);
       }
+      if (e.code === 'KeyF' && !e.repeat) {
+        e.preventDefault();
+        toggleFullscreen();
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -1920,6 +2039,44 @@
       e.preventDefault();
       handleJump();
     }, { passive: false });
+
+    /* ==========================================================================
+       Fullscreen (「もっと大きく遊びたい」への回答)
+       ==========================================================================
+       ブラウザのUIごと消せるので、特にスマホの横持ちで表示領域が大きく増える。
+       iOS Safari の iPhone は要素のフルスクリーンに未対応なのでボタンを隠す。 */
+    const fsTarget = document.getElementById('game-container');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+
+    const canFullscreen = !!(fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen);
+    if (!canFullscreen) btnFullscreen.style.display = 'none';
+
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function toggleFullscreen() {
+      if (!canFullscreen) return;
+      try {
+        if (!isFullscreen()) {
+          const req = fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen;
+          const p = req.call(fsTarget);
+          if (p && p.catch) p.catch(() => {});
+        } else {
+          const exit = document.exitFullscreen || document.webkitExitFullscreen;
+          const p = exit.call(document);
+          if (p && p.catch) p.catch(() => {});
+        }
+      } catch (e) { /* 拒否された場合は何もしない */ }
+    }
+
+    function syncFullscreenLabel() {
+      btnFullscreen.title = isFullscreen() ? '全画面を解除 (F)' : '全画面表示 (F)';
+    }
+
+    btnFullscreen.addEventListener('click', (e) => { e.preventDefault(); toggleFullscreen(); });
+    document.addEventListener('fullscreenchange', syncFullscreenLabel);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenLabel);
 
     /* 縦持ちのあいだはワールドを止める。
        回転案内で画面が覆われている裏で被弾・退化が進むのを防ぐ。 */
