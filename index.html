@@ -1,0 +1,3959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>人類進化ランナー 🧬 EVOLUTION RUNNER</title>
+  <!-- Google Fonts: Press Start 2P & DotGothic16 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #0f111a;
+      --panel-bg: rgba(20, 24, 38, 0.9);
+      --accent-neon: #00f2fe;
+      --accent-dna: #4facfe;
+      --accent-gold: #f6d365;
+      --accent-evolve: #ff0844;
+      --text-glow: 0 0 10px rgba(0, 242, 254, 0.7);
+      --pixel-border: 4px solid #000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 50% 30%, #1a2035 0%, #08090e 100%);
+      font-family: 'DotGothic16', 'Press Start 2P', monospace;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border: 4px solid #303e5c;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(79, 172, 254, 0.3);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+
+    /* ゲーム内HUD (HTMLオーバーレイ) */
+    .hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-left, .hud-right {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .badge {
+      background: var(--panel-bg);
+      border: 2px solid #4a5568;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 14px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .era-badge {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+      font-weight: bold;
+      font-size: 15px;
+      text-shadow: 0 0 8px rgba(246, 211, 101, 0.6);
+    }
+
+    @keyframes pulse-bar {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.5); }
+    }
+
+    /* ===== 速度メーター (疾走感HUDの主役) ===== */
+    .speed-panel {
+      background: rgba(0, 0, 0, 0.65);
+      border: 2px solid #4a5568;
+      border-left: 5px solid var(--accent-neon);
+      border-radius: 8px;
+      padding: 4px 10px 6px;
+      width: 230px;
+      transition: border-left-color 0.3s, box-shadow 0.3s;
+    }
+
+    .speed-panel.rushing {
+      border-left-color: var(--accent-evolve);
+      box-shadow: 0 0 18px rgba(255, 8, 68, 0.55);
+    }
+
+    .speed-readout {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      line-height: 1;
+    }
+
+    #speed-value {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 24px;
+      color: #fff;
+      text-shadow: 0 0 12px var(--accent-neon);
+      letter-spacing: 1px;
+    }
+
+    .speed-panel.rushing #speed-value {
+      color: #ffd7de;
+      text-shadow: 0 0 14px var(--accent-evolve);
+    }
+
+    .speed-unit {
+      font-size: 11px;
+      color: #a0aec0;
+    }
+
+    .speed-track {
+      position: relative;
+      height: 9px;
+      background: #10141f;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .speed-track-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00c6ff, #f6d365, #ff0844);
+      background-size: 230px 100%;
+      box-shadow: 0 0 10px rgba(0, 198, 255, 0.8);
+    }
+
+    .speed-hint {
+      font-size: 10px;
+      color: #718096;
+      margin-top: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ===== ブーストゲージ ===== */
+    .boost-gauge-container {
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #f6d365;
+      border-radius: 10px;
+      padding: 4px 8px;
+      width: 230px;
+      box-shadow: 0 0 10px rgba(246, 211, 101, 0.35);
+    }
+
+    .boost-gauge-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 3px;
+      color: #f6d365;
+    }
+
+    .boost-gauge-bar {
+      height: 10px;
+      background: #111;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .boost-gauge-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #f6d365, #ff8c42);
+      box-shadow: 0 0 8px #f6d365;
+      transition: width 0.12s linear;
+    }
+
+    .boost-gauge-fill.burning {
+      background: linear-gradient(90deg, #ff0844, #ffb199);
+      animation: pulse-bar 0.25s infinite alternate;
+    }
+
+    .boost-gauge-fill.empty {
+      background: #4a5568;
+      box-shadow: none;
+    }
+
+    /* ===== コンボ / ニアミス表示 ===== */
+    .combo-pop {
+      position: absolute;
+      top: 42%;
+      right: 26px;
+      text-align: right;
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      transform: translateX(30px);
+      transition: opacity 0.18s, transform 0.18s;
+    }
+
+    .combo-pop.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .combo-count {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 30px;
+      color: #f6d365;
+      text-shadow: 0 0 14px #ff8c42, 3px 3px 0 #000;
+    }
+
+    .combo-caption {
+      font-size: 13px;
+      color: #fff;
+      text-shadow: 0 0 8px #ff0844, 2px 2px 0 #000;
+    }
+
+    /* モバイル用バーチャルボタン */
+    .touch-controls {
+      position: absolute;
+      bottom: 15px;
+      left: 0;
+      right: 0;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .touch-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(4px);
+      border: 3px solid rgba(255, 255, 255, 0.5);
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      transition: transform 0.1s, background 0.1s;
+    }
+
+    .touch-btn:active {
+      transform: scale(0.9);
+      background: rgba(0, 242, 254, 0.4);
+      border-color: #00f2fe;
+    }
+
+    .touch-btn span {
+      font-size: 10px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* オーバーレイスクリーン (スタート/ゲームオーバー/進化カットイン) */
+    /* コンテナは 16:9 (最大 900×506px) と横長で縦が狭い。
+       内容を縦一列に積むとはみ出すため、横幅を使う2カラム構成にしている。
+       それでも収まらない小さな画面では safe center + スクロールで逃がす。 */
+    .screen-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 7, 15, 0.85);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      text-align: center;
+      padding: 14px 20px;
+      z-index: 30;
+      overflow-y: auto;
+      transition: opacity 0.3s;
+    }
+
+    /* スタート画面 / リザルト画面の2カラム */
+    .panel-columns {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      justify-content: center;
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 12px;
+    }
+
+    .panel-columns > * { flex: 1 1 0; min-width: 0; margin-bottom: 0 !important; }
+
+    @media (max-width: 640px) {
+      .panel-columns { flex-direction: column; gap: 8px; }
+    }
+
+    /* opacity だけだと非表示中も要素が残り、他のオーバーレイと重なって
+       うっすら透けることがあるため、フェード後に visibility も落とす */
+    .screen-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0s linear 0.3s;
+    }
+
+    .game-title {
+      font-family: 'Press Start 2P', 'DotGothic16', cursive;
+      font-size: 20px;
+      color: #fff;
+      text-shadow: 0 0 15px #00f2fe, 3px 3px 0 #ff0844;
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+      line-height: 1.4;
+    }
+
+    .game-subtitle {
+      font-size: 13px;
+      color: #f6d365;
+      margin-bottom: 10px;
+    }
+
+    /* 遊び方リスト */
+    .tips-box {
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #4a5568;
+    }
+
+    .tips-box > div { margin-bottom: 1px; }
+
+    .btn-main {
+      font-family: 'DotGothic16', sans-serif;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 12px 36px;
+      background: linear-gradient(135deg, #00f2fe, #4facfe);
+      border: 3px solid #fff;
+      border-radius: 30px;
+      color: #050b14;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.6), 0 5px 0 #005691;
+      transition: transform 0.1s, box-shadow 0.1s;
+      margin-top: 4px;
+    }
+
+    .btn-main:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(0, 242, 254, 0.9), 0 7px 0 #005691;
+    }
+
+    .btn-main:active {
+      transform: translateY(3px);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.4), 0 2px 0 #005691;
+    }
+
+    .key-guides {
+      display: flex;
+      gap: 18px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #a0aec0;
+    }
+
+    .key-pill {
+      background: #2d3748;
+      border: 1px solid #718096;
+      border-radius: 6px;
+      padding: 2px 8px;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      margin-right: 4px;
+    }
+
+    /* 進化カットイン */
+    .evolution-banner {
+      position: absolute;
+      top: 30%;
+      left: 0;
+      right: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 8, 68, 0.9), rgba(246, 211, 101, 0.9), transparent);
+      padding: 16px;
+      text-align: center;
+      color: #fff;
+      font-family: 'Press Start 2P', 'DotGothic16';
+      font-size: 24px;
+      text-shadow: 0 0 10px #ff0844, 2px 2px 0 #000;
+      pointer-events: none;
+      transform: scaleY(0);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 25;
+    }
+
+    .evolution-banner.active {
+      transform: scaleY(1);
+    }
+
+    /* ===== 進化系統ツリー (今どこまで進化したかを常時表示) ===== */
+    .evo-track {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #4a5568;
+      border-radius: 8px;
+      padding: 4px 8px;
+      width: fit-content;
+    }
+
+    .evo-node {
+      font-size: 15px;
+      line-height: 1;
+      padding: 2px 3px;
+      border-bottom: 2px solid transparent;
+      filter: grayscale(1) brightness(0.55);
+      transition: filter 0.3s, transform 0.3s;
+    }
+
+    .evo-node.done { filter: none; opacity: 0.8; }
+
+    .evo-node.now {
+      filter: none;
+      transform: scale(1.45);
+      animation: evo-now-pulse 1.1s infinite alternate;
+    }
+
+    @keyframes evo-now-pulse {
+      from { text-shadow: 0 0 4px currentColor; }
+      to   { text-shadow: 0 0 14px currentColor; }
+    }
+
+    .evo-link {
+      width: 10px;
+      height: 2px;
+      background: #4a5568;
+      flex: none;
+    }
+
+    /* ===== 進化カットイン (進化＝ごほうび の主役) ===== */
+    .evo-cutin {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 28;
+      transition: opacity 0.2s;
+      --era-color: #f6d365;
+    }
+
+    .evo-cutin.active { opacity: 1; }
+
+    .evo-cutin::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.1) 70%);
+    }
+
+    .evo-cutin-inner {
+      position: relative;
+      text-align: center;
+      padding: 18px 34px;
+      border-top: 3px solid var(--era-color);
+      border-bottom: 3px solid var(--era-color);
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.85) 18%, rgba(0,0,0,0.85) 82%, transparent);
+      transform: scale(0.82);
+      opacity: 0;
+    }
+
+    .evo-cutin.active .evo-cutin-inner {
+      animation: evo-cutin-in 0.42s cubic-bezier(0.18, 1.2, 0.4, 1) forwards;
+    }
+
+    @keyframes evo-cutin-in {
+      0%   { transform: scale(0.7) translateY(14px); opacity: 0; }
+      60%  { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .evo-cutin-step {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #a0aec0;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .evo-cutin-icon {
+      font-size: 44px;
+      line-height: 1;
+      filter: drop-shadow(0 0 14px var(--era-color));
+    }
+
+    .evo-cutin-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--era-color);
+      text-shadow: 0 0 14px var(--era-color), 2px 2px 0 #000;
+      margin: 6px 0 2px;
+    }
+
+    .evo-cutin-name {
+      font-size: 13px;
+      color: #e2e8f0;
+      margin-bottom: 10px;
+    }
+
+    .evo-cutin-unlock {
+      font-size: 13px;
+      color: #f6d365;
+      line-height: 1.7;
+      background: rgba(246, 211, 101, 0.08);
+      border: 1px dashed rgba(246, 211, 101, 0.5);
+      border-radius: 8px;
+      padding: 6px 14px;
+      margin-bottom: 10px;
+    }
+
+    .evo-cutin .evo-track {
+      margin: 0 auto;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .evo-cutin .evo-node { font-size: 20px; }
+
+    /* ===== 進化の旅の記録 (リザルト) ===== */
+    .panel-heading {
+      font-size: 11px;
+      color: #718096;
+      margin-bottom: 5px;
+      text-align: left;
+    }
+
+    .journey {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      width: 100%;
+    }
+
+    .journey-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.55);
+      border-left: 4px solid #4a5568;
+      border-radius: 6px;
+      padding: 4px 9px;
+      text-align: left;
+    }
+
+    .journey-row.locked { opacity: 0.35; }
+    .journey-icon { font-size: 14px; }
+    .journey-name { width: 58px; font-weight: bold; color: #cbd5e0; }
+    .journey-val { color: #a0aec0; font-size: 10px; margin-left: auto; }
+
+    .record-flash {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #fff;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+
+    .stats-box {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 2px solid #4a5568;
+      font-size: 12px;
+      line-height: 1.75;
+      text-align: left;
+    }
+
+    /* ===== 進化図鑑 (スタート画面) ===== */
+    .codex {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #4a5568;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      max-width: 500px;
+      width: 100%;
+    }
+
+    .codex-title {
+      font-size: 12px;
+      color: #a0aec0;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+
+    .codex-list {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .codex-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 10px;
+      color: #4a5568;
+      border: 2px solid #2d3748;
+      border-radius: 8px;
+      padding: 5px 8px;
+      min-width: 58px;
+    }
+
+    .codex-chip span:first-child { font-size: 18px; filter: grayscale(1) brightness(0.5); }
+    .codex-chip.unlocked span:first-child { filter: none; }
+    .codex-best { font-size: 11px; color: #718096; }
+
+    /* 下部情報バー */
+    .footer-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #718096;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+
+    <!-- HUD (ヘッダー情報) -->
+    <div class="hud" id="hud">
+      <div class="hud-left">
+        <div class="badge era-badge" id="hud-era">
+          <span id="era-icon">🦍</span> <span id="era-name">原始の森 (猿)</span>
+        </div>
+
+        <!-- 進化系統ツリー: 現在地と残りの進化段階を常時表示 -->
+        <div class="evo-track" id="evoTrack"></div>
+
+        <div class="speed-panel" id="speed-panel">
+          <div class="speed-readout">
+            <span id="speed-value">0</span><span class="speed-unit">km/h</span>
+          </div>
+          <div class="speed-track">
+            <div class="speed-track-fill" id="speed-fill"></div>
+          </div>
+          <div class="speed-hint">
+            <span id="speed-next">次の進化まで あと --</span>
+            <span id="speed-peak">MAX 0</span>
+          </div>
+        </div>
+
+        <div class="boost-gauge-container">
+          <div class="boost-gauge-label">
+            <span>⚡ ブースト (SHIFT)</span>
+            <span id="boost-text">100%</span>
+          </div>
+          <div class="boost-gauge-bar">
+            <div class="boost-gauge-fill" id="boost-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="badge">
+          <span>🏃 距離:</span> <span id="hud-distance" style="color:#00f2fe; font-weight:bold;">0 m</span>
+        </div>
+        <div class="badge">
+          <span>⭐ スコア:</span> <span id="hud-score" style="color:#f6d365; font-weight:bold;">0</span>
+        </div>
+        <div class="badge" id="hud-hp-badge">
+          <span>❤️ HP:</span> <span id="hud-hp" style="color:#ff0844; font-weight:bold;">❤❤❤</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ニアミス・コンボ表示 -->
+    <div class="combo-pop" id="comboPop">
+      <div class="combo-count" id="comboCount">×2</div>
+      <div class="combo-caption" id="comboCaption">NEAR MISS!</div>
+    </div>
+
+    <!-- 進化カットインバナー -->
+    <div class="evolution-banner" id="evolutionBanner">
+      <div style="font-size: 14px; color: #f6d365; margin-bottom: 4px;">⚡ EVOLUTION! ⚡</div>
+      <div id="evolutionTitle">原人 へ進化した！</div>
+    </div>
+
+    <!-- 進化カットイン (進化の瞬間だけ世界を止めて見せる) -->
+    <div class="evo-cutin" id="evoCutin">
+      <div class="evo-cutin-inner">
+        <div class="evo-cutin-step" id="evoCutinStep">EVOLUTION 1 / 4</div>
+        <div class="evo-cutin-icon" id="evoCutinIcon">🪨</div>
+        <div class="evo-cutin-title" id="evoCutinTitle">道具を手にした</div>
+        <div class="evo-cutin-name" id="evoCutinName">サバンナ (原人 / Caveman)</div>
+        <div class="evo-cutin-unlock" id="evoCutinUnlock"></div>
+        <div class="evo-track" id="evoCutinTrack"></div>
+      </div>
+    </div>
+
+    <!-- モバイル操作用タッチボタン -->
+    <div class="touch-controls" id="touchControls">
+      <button class="touch-btn" id="btnJump">
+        ▲
+        <span>JUMP</span>
+      </button>
+      <div style="display:flex; gap:14px; pointer-events:none;">
+        <button class="touch-btn" id="btnBoost" style="background: rgba(246, 211, 101, 0.25); border-color: #f6d365;">
+          ⚡
+          <span>BOOST</span>
+        </button>
+        <button class="touch-btn" id="btnAttack" style="background: rgba(255, 8, 68, 0.25); border-color: #ff0844;">
+          ⚔️
+          <span>ATTACK</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- スタート画面 -->
+    <div class="screen-overlay" id="startScreen">
+      <h1 class="game-title">人類進化ランナー<br><span style="font-size: 16px; color:#4facfe;">EVOLUTION RUNNER</span></h1>
+      <p class="game-subtitle">⚡ 速く走るほど進化する。止まれば退化する。</p>
+
+      <div class="panel-columns">
+        <div class="tips-box">
+          <div>🔹 <strong>速度が進化ゲージ</strong>: 一定速度に到達すると次の時代へ自動進化</div>
+          <div>🔹 <strong>進化すると体が変わる</strong>: 跳躍力・滞空・射程・ブースト燃費が向上</div>
+          <div>🔹 <strong>時代ごとに障害物が変わる</strong>: 大蛇・巨岩・マンモス・プラズマ柱…</div>
+          <div>🔹 <strong>⚠ 跳ぶな 表示</strong>: 蜂の巣・氷柱・天蓋など<strong>上から迫る障害物は跳ぶと当たる</strong></div>
+          <div>🔹 <strong>ニアミス</strong>: 障害物ギリギリをすり抜けると加速＆コンボ倍率UP</div>
+          <div>🔹 <strong>ブースト (Shift)</strong>: DNAを燃料に一気に加速。反応時間は削られる</div>
+          <div>🔹 <strong>被弾で減速</strong>: 速度が落ちすぎると<strong style="color:#ff0844;">退化</strong>してしまう</div>
+        </div>
+
+        <!-- 進化図鑑: これまでに到達した姿。走るたびに埋まっていく -->
+        <div class="codex">
+          <div class="codex-title">🧬 進化図鑑 — 到達した姿</div>
+          <div class="codex-list" id="codexList"></div>
+          <div class="codex-best" id="codexBest"></div>
+        </div>
+      </div>
+
+      <button class="btn-main" id="btnStart">ゲームスタート</button>
+
+      <div class="key-guides">
+        <div><span class="key-pill">SPACE</span>/<span class="key-pill">↑</span> ジャンプ</div>
+        <div><span class="key-pill">X</span>/<span class="key-pill">↓</span> 攻撃</div>
+        <div><span class="key-pill">SHIFT</span> ブースト</div>
+      </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div class="screen-overlay hidden" id="gameOverScreen">
+      <h2 style="font-size: 24px; color: #ff0844; margin-bottom: 4px; text-shadow: 0 0 15px #ff0844;">GAME OVER</h2>
+      <p style="font-size: 13px; color: #cbd5e0; margin-bottom: 10px;" id="gameOverMsg">進化はここで途絶えた...</p>
+
+      <div class="panel-columns">
+        <div>
+          <div class="panel-heading">🧬 ここまでの進化の記録</div>
+          <div class="journey" id="resultJourney"></div>
+        </div>
+        <div>
+          <div class="record-flash" id="resultRecord"></div>
+          <div class="stats-box">
+            <div>到達時代: <span id="resultEra" style="color: #f6d365; font-weight: bold;">-</span></div>
+            <div>最高速度: <span id="resultSpeed" style="color: #ff0844; font-weight: bold;">0 km/h</span></div>
+            <div>最大コンボ: <span id="resultCombo" style="color: #ff8c42; font-weight: bold;">0</span></div>
+            <div>走行距離: <span id="resultDistance" style="color: #00f2fe; font-weight: bold;">0 m</span></div>
+            <div>最終スコア: <span id="resultScore" style="color: #4facfe; font-weight: bold;">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-main" id="btnRestart">もう一度プレイ</button>
+    </div>
+
+    <!-- ゲームクリア画面 (未来サイボーグ到達＆生還) -->
+    <div class="screen-overlay hidden" id="clearScreen">
+      <h2 style="font-size: 22px; color: #f6d365; margin-bottom: 4px; text-shadow: 0 0 20px #f6d365;">🎉 進化コンプリート！ 🎉</h2>
+      <p style="font-size: 13px; color: #00f2fe; margin-bottom: 10px;">
+        森の猿から始まった旅は、ついに人類を超えた。　🦍 → 🪨 → 🏹 → 🏙️ → 🤖
+      </p>
+
+      <div class="panel-columns">
+        <div>
+          <div class="panel-heading">🧬 進化の旅の記録</div>
+          <div class="journey" id="clearJourney"></div>
+        </div>
+        <div>
+          <div class="record-flash" id="clearRecord"></div>
+          <div class="stats-box" style="border-color:#00f2fe;">
+            <div>最高速度: <span id="clearSpeed" style="color: #ff0844; font-weight: bold;">0 km/h</span></div>
+            <div>走行距離: <span id="clearDistance" style="color: #00f2fe; font-weight: bold;">0 m</span></div>
+            <div>トータルスコア: <span id="clearScore" style="color: #f6d365; font-weight: bold;">0</span></div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-main" id="btnClearRestart">さらなる高みへ挑戦</button>
+    </div>
+  </div>
+
+  <div class="footer-info">
+    人類進化ランナー 2D Prototype &bull; PC (キーボード) / スマートフォン (タッチ操作) 対応
+  </div>
+
+  <script>
+    /* ==========================================================================
+       Sound System (Web Audio API によるレトロPSGサウンド合成)
+       ========================================================================== */
+    class RetroAudio {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTone(freq, type = 'square', duration = 0.1, gainVal = 0.15) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+      playJump() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.15);
+        } catch(e) {}
+      }
+      playDna() {
+        this.playTone(523.25, 'triangle', 0.08, 0.2); // C5
+        setTimeout(() => this.playTone(659.25, 'triangle', 0.08, 0.2), 60); // E5
+        setTimeout(() => this.playTone(783.99, 'triangle', 0.12, 0.2), 120); // G5
+      }
+      playEvolution() {
+        if (!this.ctx) return;
+        const notes = [440, 554, 659, 880, 1108, 1318];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.playTone(freq, 'sawtooth', 0.2, 0.2);
+          }, idx * 70);
+        });
+      }
+      playAttack(stage) {
+        if (!this.ctx) return;
+        if (stage === 4) {
+          // レーザー音
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.2);
+        } else {
+          // 打撃 / スイング音
+          this.playTone(180, 'square', 0.12, 0.25);
+          setTimeout(() => this.playTone(90, 'triangle', 0.1, 0.3), 50);
+        }
+      }
+      playHit() {
+        this.playTone(80, 'sawtooth', 0.25, 0.3);
+      }
+      playDamage() {
+        this.playTone(120, 'square', 0.2, 0.3);
+        setTimeout(() => this.playTone(60, 'sawtooth', 0.3, 0.3), 100);
+      }
+      playNearMiss(combo) {
+        // コンボが伸びるほど高い音に (疾走感の報酬フィードバック)
+        const base = 880 * Math.pow(1.06, Math.min(combo, 20));
+        this.playTone(base, 'triangle', 0.07, 0.14);
+      }
+      playBoost() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.28);
+          gain.gain.setValueAtTime(0.16, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.3);
+        } catch (e) {}
+      }
+      playDevolve() {
+        const notes = [880, 660, 494, 370, 262];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'square', 0.16, 0.16), idx * 80);
+        });
+      }
+
+      /* 走行ドローン: 速度に比例してピッチとゲインが上がり続ける常時音。
+         「速くなっている」ことを耳でも伝えるのが役目。 */
+      startEngine() {
+        if (!this.ctx || this.engineOsc) return;
+        try {
+          this.engineOsc = this.ctx.createOscillator();
+          this.engineGain = this.ctx.createGain();
+          this.engineFilter = this.ctx.createBiquadFilter();
+          this.engineFilter.type = 'lowpass';
+          this.engineFilter.frequency.value = 600;
+          this.engineOsc.type = 'sawtooth';
+          this.engineOsc.frequency.value = 55;
+          this.engineGain.gain.value = 0;
+          this.engineOsc.connect(this.engineFilter);
+          this.engineFilter.connect(this.engineGain);
+          this.engineGain.connect(this.ctx.destination);
+          this.engineOsc.start();
+        } catch (e) { this.engineOsc = null; }
+      }
+      setEngine(intensity) {
+        if (!this.engineOsc || this.muted) return;
+        const t = this.ctx.currentTime;
+        const k = Math.max(0, Math.min(1, intensity));
+        try {
+          this.engineOsc.frequency.setTargetAtTime(45 + k * 95, t, 0.15);
+          this.engineFilter.frequency.setTargetAtTime(350 + k * 1400, t, 0.15);
+          this.engineGain.gain.setTargetAtTime(0.012 + k * 0.05, t, 0.2);
+        } catch (e) {}
+      }
+      stopEngine() {
+        if (!this.engineGain) return;
+        try {
+          this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+        } catch (e) {}
+      }
+    }
+    const audio = new RetroAudio();
+
+    /* ==========================================================================
+       Evolution Stages Configuration (全5段階の進化データ)
+       ========================================================================== */
+    /* evolveAt: この速度に到達すると次の時代へ自動進化
+       devolveAt: この速度を下回ると前の時代へ退化 (evolveAt より低くしてヒステリシスを作る)
+       spriteRow: assets/runner_sheet.png の行番号 (0=猿 … 4=サイボーグ) */
+    /* body: 進化のたびに書き換わる「体の性能」。
+       見た目だけでなく操作の手触りが変わることで、進化を指で実感させる。
+       spawn: 時代ごとの障害物密度。後の時代ほど詰めて出す。 */
+    const ERAS = [
+      {
+        id: 0,
+        name: "原始の森 (猿 / Ape)",
+        shortName: "猿",
+        icon: "🦍",
+        spriteRow: 0,
+        evolveAt: 9.6,
+        devolveAt: -1,          // 最初の時代なので退化しない
+        spriteScale: 0.92,      // 猿は前傾で低い姿勢
+        color: "#55efc4",
+        bgType: "jungle",
+        groundColor: "#2d3436",
+        grassColor: "#00b894",
+        skyGradient: ["#1e3799", "#4a69bd", "#78e08f"],
+        attackName: "引っかき",
+        attackRange: 70,
+        weaponType: "claw",
+        desc: "俊敏な四足ダッシュ！身軽に障害物を飛び越える",
+        jumpPower: -15.0,
+        gravity: 1.05,
+        maxJumps: 1,
+        boostEfficiency: 1.18,   // 大きいほど燃料の減りが速い
+        spawn: { base: 62, jitter: 46, obstacleRate: 0.55 },
+        unlockTitle: "生命の目覚め",
+        unlockLines: ["🖐 引っかき — 目の前の敵だけ払える", "🦵 跳躍力はまだ低い。走って避けろ"]
+      },
+      {
+        id: 1,
+        name: "サバンナ (原人 / Caveman)",
+        shortName: "原人",
+        icon: "🪨",
+        spriteRow: 1,
+        evolveAt: 13.2,
+        devolveAt: 8.4,
+        spriteScale: 1.0,
+        color: "#fdcb6e",
+        bgType: "savanna",
+        groundColor: "#8c531b",
+        grassColor: "#d35400",
+        skyGradient: ["#833471", "#d980fa", "#f8a5c2"],
+        attackName: "棍棒スマッシュ",
+        attackRange: 95,
+        weaponType: "club",
+        desc: "棍棒を振り回し、前方の岩や敵を叩き壊す！",
+        jumpPower: -15.8,
+        gravity: 1.00,
+        maxJumps: 1,
+        boostEfficiency: 1.05,
+        spawn: { base: 58, jitter: 42, obstacleRate: 0.60 },
+        unlockTitle: "道具を手にした",
+        unlockLines: ["🪵 棍棒スマッシュ — 射程が 70 → 95 に拡大", "🦵 跳躍力アップ。燃料の持ちも良くなった"]
+      },
+      {
+        id: 2,
+        name: "氷河期 (狩猟民 / Hunter)",
+        shortName: "狩猟民",
+        icon: "🏹",
+        spriteRow: 2,
+        evolveAt: 16.8,
+        devolveAt: 11.9,
+        spriteScale: 1.0,
+        color: "#74b9ff",
+        bgType: "ice_age",
+        groundColor: "#5a6b78",
+        grassColor: "#eaf3f7",
+        skyGradient: ["#0b1a3a", "#1e3d6b", "#8fc7dd"],
+        attackName: "槍投げ (スピア)",
+        attackRange: 180,
+        weaponType: "spear",
+        desc: "貫通する槍を投擲！マンモスを狩り、氷原を駆け抜ける",
+        jumpPower: -16.6,
+        gravity: 0.96,
+        maxJumps: 1,
+        boostEfficiency: 0.95,
+        spawn: { base: 52, jitter: 38, obstacleRate: 0.64 },
+        unlockTitle: "遠距離狩猟を覚えた",
+        unlockLines: ["🏹 投槍 — 触れずに獲物を仕留められる (射程180)", "🦵 大跳躍を獲得。マンモスも跳び越えられる"]
+      },
+      {
+        id: 3,
+        name: "現代都市 (現代人 / Modern)",
+        shortName: "現代人",
+        icon: "🏙️",
+        spriteRow: 3,
+        evolveAt: 20.4,
+        devolveAt: 15.5,
+        spriteScale: 1.02,
+        color: "#00f2fe",
+        bgType: "city",
+        groundColor: "#2c3e50",
+        grassColor: "#34495e",
+        skyGradient: ["#0c2461", "#1e3799", "#4a69bd"],
+        attackName: "ドローンパルス",
+        attackRange: 220,
+        weaponType: "drone",
+        desc: "ドローンから電磁パルス！DNAを磁力で引き寄せる",
+        jumpPower: -17.2,
+        gravity: 0.91,
+        maxJumps: 1,
+        boostEfficiency: 0.85,
+        spawn: { base: 46, jitter: 34, obstacleRate: 0.68 },
+        unlockTitle: "テクノロジーを従えた",
+        unlockLines: ["🛸 ドローンパルス — DNAを磁力で自動回収", "🦵 滞空時間が伸び、空中でも粘れる"]
+      },
+      {
+        id: 4,
+        name: "サイバー未来 (サイボーグ / Cyborg)",
+        shortName: "未来人",
+        icon: "🤖",
+        spriteRow: 4,
+        evolveAt: Infinity,     // 最終形態
+        devolveAt: 19.1,
+        spriteScale: 1.04,
+        color: "#ff0844",
+        bgType: "cyber",
+        groundColor: "#130f40",
+        grassColor: "#30336b",
+        skyGradient: ["#000000", "#192a56", "#2c2c54"],
+        attackName: "メガ粒子ビーム",
+        attackRange: 350,
+        weaponType: "laser",
+        desc: "2段ジャンプ解禁＆貫通ビームで防衛網を撃ち抜け！",
+        jumpPower: -17.8,
+        gravity: 0.87,
+        maxJumps: 2,
+        boostEfficiency: 0.72,
+        spawn: { base: 46, jitter: 28, obstacleRate: 0.76 },
+        unlockTitle: "人類を超えた",
+        unlockLines: ["⚡ 2段ジャンプ解禁 — プラズマ柱も余裕で越えられる", "🔴 貫通メガ粒子ビーム — 防衛網をまとめて薙ぎ払う"]
+      }
+    ];
+
+    /* ==========================================================================
+       Obstacle Catalog (時代ごとの障害物)
+       ==========================================================================
+       place  … 'ground' 接地 / 'hang' 天井から垂れ下がる / 'air' 空中を漂う
+       clear  … place:'hang' のとき、地面から障害物の下端までの高さ。
+                プレイヤーの立ち高さは 72px なので、clear が 72〜210 だと
+                「跳ぶと当たる」= 跳ばずに走り抜ける判断を迫る障害物になる。
+       airY   … place:'air' の中心高さ (地面からの距離)
+       motion … 'sine' 上下動 / 'dive' 接近すると急降下 / 'charge' 手前に突進 / 'roll' 回転
+       hp     … 破壊に必要な攻撃回数。smashable:false は破壊不能 (跳ぶしかない)
+    */
+    const OBSTACLES = {
+      /* ---- 原始の森 (猿) ---- */
+      log:       { name:'倒木',           w:84, h:38,  color:'#6c5033', place:'ground', art:'log' },
+      snake:     { name:'ジャングルの大蛇', w:68, h:40,  color:'#00b894', place:'ground', art:'snake' },
+      boar:      { name:'突進イノシシ',    w:66, h:48,  color:'#8d6e4a', place:'ground', art:'boar', motion:'charge', charge:1.7 },
+      hive:      { name:'吊り下がる蜂の巣', w:48, h:56,  color:'#e1a95f', place:'hang',   clear:104, art:'hive' },
+
+      /* ---- サバンナ (原人) ---- */
+      boulder:   { name:'転がる巨岩',      w:62, h:60,  color:'#a0522d', place:'ground', art:'boulder', motion:'roll' },
+      bonfire:   { name:'野火',           w:74, h:50,  color:'#e17055', place:'ground', art:'bonfire', smashable:false },
+      bones:     { name:'獣骨の山',        w:80, h:42,  color:'#dfe6e9', place:'ground', art:'bones' },
+      vulture:   { name:'襲いかかるハゲワシ', w:58, h:34, color:'#2d3436', place:'air', airY:150, art:'vulture', motion:'dive', diveTo:52 },
+
+      /* ---- 氷河期 (狩猟民) ---- */
+      mammoth:   { name:'マンモス',        w:104, h:86, color:'#7b5c3e', place:'ground', art:'mammoth', hp:2 },
+      saber:     { name:'サーベルタイガー', w:78,  h:50, color:'#e8b04b', place:'ground', art:'saber', motion:'charge', charge:2.4 },
+      crevasse:  { name:'氷の裂け目',      w:96,  h:32, color:'#5d8aa8', place:'ground', art:'crevasse', smashable:false },
+      icefang:   { name:'垂れ下がる氷柱',   w:56,  h:74, color:'#a8e6ff', place:'hang',   clear:108, art:'icefang' },
+      frozenlog: { name:'凍りついた倒木',   w:88,  h:46, color:'#b8d8e8', place:'ground', art:'frozenlog' },
+
+      /* ---- 現代都市 (現代人) ---- */
+      barrier:   { name:'工事バリケード',   w:54,  h:60, color:'#e17055', place:'ground', art:'barrier' },
+      taxi:      { name:'放置タクシー',     w:112, h:56, color:'#f6c445', place:'ground', art:'taxi', hp:2 },
+      cones:     { name:'パイロン列',       w:76,  h:40, color:'#ff7043', place:'ground', art:'cones' },
+      signboard: { name:'落下しかけの看板',  w:96,  h:52, color:'#00b894', place:'hang',  clear:112, art:'signboard' },
+
+      /* ---- サイバー未来 (サイボーグ) ---- */
+      laser_gate:{ name:'レーザーゲート',   w:44,  h:98, color:'#e84393', place:'ground', art:'laser_gate' },
+      // 上空から走行高度まで急降下してくる。走っているだけでは必ず当たる
+      drone:     { name:'急降下ドローン',   w:50,  h:42, color:'#e84393', place:'air', airY:180, art:'drone',
+                   motion:'dive', diveTo:4 },
+      // 走行高度を上下しながら居座る。位置が読めるぶん、跳ぶ判断だけを問う
+      sentry:    { name:'警備ドローン',     w:50,  h:42, color:'#e84393', place:'air', airY:32, art:'drone',
+                   motion:'sine', amp:20, freq:0.06 },
+      hovercar:  { name:'暴走ホバーカー',   w:118, h:54, color:'#00cec9', place:'air', airY:44, art:'hovercar', motion:'charge', charge:3.6, hp:2 },
+      pillar:    { name:'プラズマ柱',       w:40, h:134, color:'#a29bfe', place:'ground', art:'pillar', smashable:false },
+      wall:      { name:'防壁ユニット',     w:58,  h:66, color:'#0984e3', place:'ground', art:'wall' },
+      ceiling:   { name:'エネルギー天蓋',   w:150, h:60, color:'#fd79a8', place:'hang',  clear:150, art:'ceiling', smashable:false }
+    };
+
+    /* 障害物の「編成」。1回のスポーンでまとめて出す組み合わせ。
+       dx は先頭からの距離 (px)。weight が大きいほど出やすい。
+
+       ★設計ルール（回避不能パターンを作らないための鉄則）★
+       「跳ばないと越えられない障害物 (ground)」と
+       「跳ぶと当たる障害物 (hang)」を同じ編成に混ぜてはいけない。
+       ジャンプの弧は固定なので、両者が近接すると跳んでも跳ばなくても
+       当たる＝理不尽な即死パターンになる。hang は必ず単独で出す。
+
+       連続配置の dx は「1回のジャンプで両方を越えられる距離」に収める。 */
+    const FORMATIONS = {
+      jungle: [
+        { weight: 3, items: [{ k:'snake' }] },
+        { weight: 3, items: [{ k:'log' }] },
+        { weight: 2, items: [{ k:'boar' }] },
+        { weight: 2, items: [{ k:'hive' }] },                               // 単独 = 跳ばずに走り抜ける
+        { weight: 1, items: [{ k:'log' }, { k:'snake', dx: 330 }] }
+      ],
+      savanna: [
+        { weight: 3, items: [{ k:'boulder' }] },
+        { weight: 2, items: [{ k:'bones' }] },
+        { weight: 2, items: [{ k:'bonfire' }] },
+        { weight: 2, items: [{ k:'vulture' }] },
+        { weight: 2, items: [{ k:'boulder' }, { k:'boulder', dx: 170 }] },  // 1回のジャンプで2つ越える
+        { weight: 1, items: [{ k:'bones' }, { k:'bonfire', dx: 190 }] }
+      ],
+      ice_age: [
+        { weight: 3, items: [{ k:'mammoth' }] },                            // 槍で狩るか跳び越えるか
+        { weight: 3, items: [{ k:'saber' }] },
+        { weight: 2, items: [{ k:'crevasse' }] },
+        { weight: 2, items: [{ k:'frozenlog' }] },
+        { weight: 2, items: [{ k:'icefang' }] },                            // 単独 = 跳ぶと氷柱に激突
+        { weight: 2, items: [{ k:'saber' }, { k:'saber', dx: 200 }] },      // 群れで襲ってくる
+        { weight: 1, items: [{ k:'frozenlog' }, { k:'mammoth', dx: 250 }] }
+      ],
+      city: [
+        { weight: 3, items: [{ k:'barrier' }] },
+        { weight: 2, items: [{ k:'cones' }] },
+        { weight: 2, items: [{ k:'taxi' }] },
+        { weight: 2, items: [{ k:'signboard' }] },                          // 単独
+        { weight: 2, items: [{ k:'cones' }, { k:'barrier', dx: 200 }] },
+        { weight: 1, items: [{ k:'barrier' }, { k:'barrier', dx: 240 }] }
+      ],
+      /* 最終ステージ。「走っているだけでは絶対に抜けられない」構成にする。
+         ・pillar   破壊不能・高さ134 → 全力ジャンプか2段ジャンプが要る
+         ・drone    上空から走行高度まで急降下 → 走っていると必ず当たる
+         ・sentry   走行高度を上下しながら居座る → 跳ぶしかない
+         ・hovercar 自分から突っ込んでくる → 反応時間が最短
+         ・ceiling  跳ぶと当たる天蓋 → 「跳ばない」判断を単独で問う */
+      cyber: [
+        { weight: 3, items: [{ k:'drone' }] },
+        { weight: 3, items: [{ k:'pillar' }] },
+        { weight: 2, items: [{ k:'sentry' }] },
+        { weight: 2, items: [{ k:'laser_gate' }] },
+        { weight: 2, items: [{ k:'hovercar' }] },
+        { weight: 2, items: [{ k:'wall' }, { k:'wall', dx: 185 }] },
+        { weight: 2, items: [{ k:'pillar' }, { k:'wall', dx: 245 }] },
+        { weight: 2, items: [{ k:'laser_gate' }, { k:'wall', dx: 230 }] },
+        { weight: 2, items: [{ k:'ceiling' }] }                             // 単独
+      ]
+    };
+
+    /* ==========================================================================
+       Speed Model (疾走感のチューニング定数を1か所に集約)
+       ========================================================================== */
+    const SPEED = {
+      start: 6.0,          // 開始速度 (px/frame @60fps)
+      min: 5.0,            // これ以下には落ちない
+      max: 26.0,           // 上限
+      drift: 0.0032,       // 毎フレームの自然加速 (走り続けるだけで少しずつ速くなる)
+      boostDrift: 0.010,   // ブースト中の加速倍率ぶん
+      perDna: 0.13,        // DNA取得ごとの加速
+      perNearMiss: 0.34,   // ニアミス成功ごとの加速
+      perSmash: 0.22,      // 障害物破壊ごとの加速
+      // 被弾ペナルティは「割合」ではなく「固定値」。割合だと高速域で一気に2段階
+      // 退化してしまい、終盤が理不尽になるため。1発では基本退化せず、2発で退化する。
+      hitPenalty: 3.2,
+      nearMissGap: 72,     // この距離以内をすり抜けたらニアミス成立
+      boostAdd: 6.2,       // ブースト時の上乗せ速度
+      boostDrain: 0.85,    // ブースト中の燃料消費 (per frame)
+      boostRegen: 0.055,   // 非ブースト時の自然回復 (per frame)
+      fuelPerDna: 9        // DNA 1個あたりの燃料回復
+    };
+
+    const KMH_PER_UNIT = 12.5;   // 内部速度 → 表示km/h の換算
+
+    /* ==========================================================================
+       Game Engine & State
+       ========================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    /* ランサイクル・アトラス: 10フレーム × 5進化段階 */
+    const SHEET = { cols: 10, rows: 5, cellW: 136, cellH: 128, bodyAnchorX: 0.44 };
+    const spriteImg = new Image();
+    spriteImg.src = 'assets/runner_sheet.png';
+    let spriteLoaded = false;
+    spriteImg.onload = () => { spriteLoaded = true; };
+
+    // ステージ座標
+    const GROUND_Y = 378;      // 足元の接地ライン
+    const GROUND_TOP = 372;    // 地面の描画上端
+
+    // ゲーム変数
+    let gameState = 'START';
+    let score = 0;
+    let distance = 0;
+    let currentEraIndex = 0;
+    let playerHp = 3;
+    let maxHp = 3;
+    let gameFrame = 0;
+
+    // --- 速度まわり (このゲームの心臓部) ---
+    let gameSpeed = SPEED.start;   // 素の走行速度
+    let boostAdd = 0;              // ブーストによる上乗せ (滑らかに増減)
+    let boostFuel = 100;
+    let boosting = false;
+    let peakSpeed = SPEED.start;
+    let effectiveSpeed = SPEED.start;   // gameSpeed + boostAdd (毎フレーム更新)
+
+    // --- コンボ / ニアミス ---
+    let combo = 0;
+    let maxCombo = 0;
+    let comboTimer = 0;
+
+    // --- 演出用カメラ ---
+    let shakeAmount = 0;
+    let camZoom = 1;
+    let camZoomTarget = 1;
+    let flashAmount = 0;
+    let hitStop = 0;           // ヒットストップ (被弾・破壊時に数フレーム止める)
+
+    // プレイヤーオブジェクト (x/y/width/height は当たり判定ボックス。描画は別途スケール)
+    const player = {
+      x: 96,
+      y: GROUND_Y - 72,
+      width: 38,
+      height: 72,
+      vy: 0,
+      gravity: 0.95,
+      jumpPower: -16.2,
+      isGrounded: true,
+      jumpCount: 0,
+      maxJumps: 1,
+      isAttacking: false,
+      attackTimer: 0,
+      attackDuration: 16,
+      invulnerableTimer: 0,
+      animTime: 0,        // ランサイクルの再生位置 (小数)
+      animFrame: 0,       // 現在のフレーム番号 0..9
+      leanAngle: 0,       // 速度に応じた前傾
+      bobOffset: 0
+    };
+
+    // --- 進化の記録 (時代ごとの走破データ。クリア/ゲームオーバー時に旅の記録として見せる) ---
+    let eraStats = [];
+
+    // 背景・オブジェクト管理
+    let bgScroll = 0;
+    let midScroll = 0;
+    let nearScroll = 0;
+    let groundScroll = 0;
+    let weatherScroll = 0;
+    let shockRings = [];
+    let obstacles = [];
+    let dnas = [];
+    let projectiles = [];
+    let particles = [];
+    let floatingTexts = [];
+    let speedLines = [];
+    let afterImages = [];
+
+    /* ==========================================================================
+       Particle & FX Helpers
+       ========================================================================== */
+    function createDust(x, y) {
+      // 速いほど土煙が後方へ強く流れる
+      const kick = effectiveSpeed * 0.55;
+      for (let i = 0; i < 3; i++) {
+        particles.push({
+          x: x + Math.random() * 10 - 5,
+          y: y,
+          vx: -(Math.random() * 2 + 1) - kick,
+          vy: -(Math.random() * 2.2),
+          size: Math.random() * 5 + 2,
+          color: currentEraIndex === 4 ? '#00f2fe' : 'rgba(200, 180, 150, 0.8)',
+          life: 18,
+          maxLife: 18
+        });
+      }
+    }
+
+    function createExplosion(x, y, color = '#ff7675', count = 10) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 4 + 1.5;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          size: Math.random() * 5 + 3,
+          color: color,
+          life: 25,
+          maxLife: 25
+        });
+      }
+    }
+
+    function createEvolutionPillars(x, y) {
+      for (let i = 0; i < 35; i++) {
+        particles.push({
+          x: x + (Math.random() * 60 - 30),
+          y: y + 20,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -(Math.random() * 8 + 4),
+          size: Math.random() * 6 + 3,
+          color: ['#00f2fe', '#f6d365', '#ff0844', '#fff'][Math.floor(Math.random() * 4)],
+          life: 40,
+          maxLife: 40
+        });
+      }
+    }
+
+    /* 進化の衝撃波リング。ヒットストップ中も広がり続けるので、
+       止まった世界の中で自分だけが変化していく画になる。 */
+    function addShockRing(x, y, color, maxR, life = 36) {
+      shockRings.push({ x, y, r: 10, maxR, color, life, maxLife: life });
+    }
+
+    function updateShockRings() {
+      for (let i = shockRings.length - 1; i >= 0; i--) {
+        const s = shockRings[i];
+        s.r += (s.maxR - s.r) * 0.14;
+        s.life--;
+        if (s.life <= 0) shockRings.splice(i, 1);
+      }
+    }
+
+    function drawShockRings() {
+      if (shockRings.length === 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      shockRings.forEach(s => {
+        const t = s.life / s.maxLife;
+        ctx.globalAlpha = t * 0.85;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2 + t * 7;
+        ctx.beginPath();
+        ctx.ellipse(s.x, s.y, s.r, s.r * 0.62, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function addFloatingText(text, x, y, color = '#fff') {
+      floatingTexts.push({
+        text, x, y, color,
+        vy: -1.2,
+        life: 40,
+        maxLife: 40
+      });
+    }
+
+    /* 画面を横切る速度線。密度・長さ・速さのすべてが走行速度に連動する。
+       疾走感の8割はここが担っている。 */
+    function spawnSpeedLines() {
+      const t = speedRatio();               // 0..1
+      const rate = t * 3.2;                 // 1フレームあたりの平均本数
+      let n = Math.floor(rate) + (Math.random() < (rate % 1) ? 1 : 0);
+      if (boosting) n += 2;
+
+      for (let i = 0; i < n; i++) {
+        // 画面中央付近を避け、上下に散らして「トンネルを抜ける」感じを出す
+        const edgeBias = Math.random() < 0.5 ? -1 : 1;
+        const y = canvas.height / 2 + edgeBias * (30 + Math.random() * 210);
+        speedLines.push({
+          x: canvas.width + 40,
+          y: y,
+          len: 40 + Math.random() * 130 * (0.4 + t),
+          speed: effectiveSpeed * (2.2 + Math.random() * 2.4),
+          width: Math.random() < 0.25 ? 3 : 1.5,
+          alpha: 0.16 + Math.random() * 0.4 * t,
+          color: boosting ? '#ffd7a0' : '#ffffff',
+          front: Math.random() < 0.5      // 半分はキャラの手前を横切らせる
+        });
+      }
+    }
+
+    function updateSpeedLines() {
+      for (let i = speedLines.length - 1; i >= 0; i--) {
+        const s = speedLines[i];
+        s.x -= s.speed;
+        if (s.x + s.len < -20) speedLines.splice(i, 1);
+      }
+    }
+
+    /* プレイヤーの残像。高速時・ブースト時にだけ出して「置き去りにしている」感を出す。 */
+    function pushAfterImage(frame, drawX, drawY, drawW, drawH, lean) {
+      afterImages.push({
+        frame, drawX, drawY, drawW, drawH, lean,
+        row: ERAS[currentEraIndex].spriteRow,
+        life: 12,
+        maxLife: 12
+      });
+    }
+
+    function updateAfterImages() {
+      for (let i = afterImages.length - 1; i >= 0; i--) {
+        const a = afterImages[i];
+        a.drawX -= effectiveSpeed * 0.75;
+        a.life--;
+        if (a.life <= 0) afterImages.splice(i, 1);
+      }
+    }
+
+    /* 現在速度を 0..1 に正規化 (演出強度の共通スケール) */
+    function speedRatio() {
+      return Math.max(0, Math.min(1, (effectiveSpeed - SPEED.start) / (SPEED.max - SPEED.start)));
+    }
+
+    function addShake(amount) {
+      shakeAmount = Math.min(24, shakeAmount + amount);
+    }
+
+    /* ==========================================================================
+       Input Handling
+       ========================================================================== */
+    const keys = {};
+    const JUMP_KEYS = ['Space', 'ArrowUp', 'KeyW'];
+    const ATTACK_KEYS = ['KeyX', 'ArrowDown', 'KeyS', 'KeyJ'];
+    const BOOST_KEYS = ['ShiftLeft', 'ShiftRight', 'KeyZ'];
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (JUMP_KEYS.includes(e.code)) {
+        e.preventDefault();
+        if (!e.repeat) handleJump();   // 押しっぱなしで2段ジャンプを食われないように
+      }
+      if (ATTACK_KEYS.includes(e.code)) {
+        e.preventDefault();
+        if (!e.repeat) handleAttack();
+      }
+      if (BOOST_KEYS.includes(e.code)) {
+        e.preventDefault();
+        if (!e.repeat) setBoost(true);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+      if (BOOST_KEYS.includes(e.code)) setBoost(false);
+    });
+
+    // フォーカスを失ったらブーストを解除 (押しっぱなし状態の取り残し防止)
+    window.addEventListener('blur', () => setBoost(false));
+
+    function setBoost(on) {
+      if (gameState !== 'PLAYING') { boosting = false; return; }
+      if (on && boostFuel <= 2) return;
+      if (on && !boosting) {
+        audio.init();
+        audio.playBoost();
+        camZoomTarget = 1.06;          // 画角がわずかに寄る = 踏み込んだ感触
+        addShake(5);
+        addFloatingText("BOOST!", player.x, player.y - 26, '#f6d365');
+      }
+      if (!on && boosting) {
+        camZoomTarget = 1;
+      }
+      boosting = on;
+    }
+
+    function handleJump() {
+      if (gameState !== 'PLAYING') return;
+      audio.init();
+
+      if (player.isGrounded) {
+        player.vy = player.jumpPower;
+        player.isGrounded = false;
+        player.jumpCount = 1;
+        audio.playJump();
+        createDust(player.x, player.y + player.height);
+      } else if (player.jumpCount < player.maxJumps) {
+        // 2段ジャンプ (未来人のみ)
+        player.vy = player.jumpPower * 0.9;
+        player.jumpCount++;
+        audio.playJump();
+        createExplosion(player.x + player.width/2, player.y + player.height, '#00f2fe', 8);
+        addFloatingText("BOOST!", player.x, player.y, '#00f2fe');
+      }
+    }
+
+    function handleAttack() {
+      if (gameState !== 'PLAYING') return;
+      if (player.isAttacking) return;
+      audio.init();
+
+      player.isAttacking = true;
+      player.attackTimer = player.attackDuration;
+      const era = ERAS[currentEraIndex];
+      audio.playAttack(currentEraIndex);
+
+      // 飛び道具は「自分の走行速度 + 武器の初速」で飛ぶ (速いほど弾も速い)
+      const carry = effectiveSpeed * 0.7;
+
+      if (era.weaponType === 'spear') {
+        // 槍を投擲
+        projectiles.push({
+          x: player.x + player.width,
+          y: player.y + player.height / 2,
+          vx: 12 + carry,
+          vy: 0,
+          width: 30,
+          height: 6,
+          type: 'spear',
+          life: 50
+        });
+      } else if (era.weaponType === 'laser') {
+        // レーザービーム
+        projectiles.push({
+          x: player.x + player.width,
+          y: player.y + player.height / 2 - 8,
+          vx: 18 + carry,
+          vy: 0,
+          width: 90,
+          height: 16,
+          type: 'laser',
+          life: 40
+        });
+        addShake(4);
+      } else if (era.weaponType === 'drone') {
+        // ドローンパルス
+        projectiles.push({
+          x: player.x + player.width,
+          y: player.y + player.height / 2 - 10,
+          vx: 9 + carry,
+          vy: 0,
+          width: 38,
+          height: 26,
+          type: 'pulse',
+          life: 45
+        });
+      }
+    }
+
+    // タッチボタン
+    const btnJump = document.getElementById('btnJump');
+    const btnAttack = document.getElementById('btnAttack');
+    const btnBoost = document.getElementById('btnBoost');
+
+    btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); });
+    btnJump.addEventListener('mousedown', (e) => { e.preventDefault(); handleJump(); });
+
+    btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); handleAttack(); });
+    btnAttack.addEventListener('mousedown', (e) => { e.preventDefault(); handleAttack(); });
+
+    // ブーストは押している間だけ有効 (離す/指が外れる操作をすべて拾う)
+    btnBoost.addEventListener('touchstart', (e) => { e.preventDefault(); setBoost(true); });
+    btnBoost.addEventListener('touchend', (e) => { e.preventDefault(); setBoost(false); });
+    btnBoost.addEventListener('touchcancel', (e) => { e.preventDefault(); setBoost(false); });
+    btnBoost.addEventListener('mousedown', (e) => { e.preventDefault(); setBoost(true); });
+    window.addEventListener('mouseup', () => setBoost(false));
+
+    /* ==========================================================================
+       Game Lifecycle: Start, Reset, Evolve, Game Over
+       ========================================================================== */
+    function startGame() {
+      audio.init();
+      audio.startEngine();
+      gameState = 'PLAYING';
+      score = 0;
+      distance = 0;
+      currentEraIndex = 0;
+      playerHp = 3;
+
+      gameSpeed = SPEED.start;
+      effectiveSpeed = SPEED.start;
+      peakSpeed = SPEED.start;
+      boostAdd = 0;
+      boostFuel = 100;
+      boosting = false;
+
+      combo = 0;
+      maxCombo = 0;
+      comboTimer = 0;
+
+      shakeAmount = 0;
+      camZoom = 1;
+      camZoomTarget = 1;
+      flashAmount = 0;
+      hitStop = 0;
+      spawnGapLeft = 240;
+
+      // 時代ごとの走破記録をリセット (クリア時に「進化の旅の記録」として見せる)
+      eraStats = ERAS.map(() => ({ reached: false, distance: 0, topSpeed: 0 }));
+      eraStats[0].reached = true;
+
+      applyEraAbilities();
+      player.y = GROUND_Y - player.height;
+      player.vy = 0;
+      player.isGrounded = true;
+      player.invulnerableTimer = 0;
+      player.isAttacking = false;
+      player.attackTimer = 0;
+      player.animTime = 0;
+
+      obstacles = [];
+      dnas = [];
+      projectiles = [];
+      particles = [];
+      floatingTexts = [];
+      speedLines = [];
+      afterImages = [];
+      shockRings = [];
+
+      hideEvolutionCutin();
+      document.getElementById('startScreen').classList.add('hidden');
+      document.getElementById('gameOverScreen').classList.add('hidden');
+      document.getElementById('clearScreen').classList.add('hidden');
+
+      updateHUD();
+    }
+
+    /* 速度が進化ゲージそのもの。毎フレーム閾値をまたいだかを見る。 */
+    function checkEvolutionState() {
+      const era = ERAS[currentEraIndex];
+      if (gameSpeed >= era.evolveAt && currentEraIndex < ERAS.length - 1) {
+        triggerEvolution();
+      } else if (gameSpeed < era.devolveAt && currentEraIndex > 0) {
+        triggerDevolution();
+      } else if (currentEraIndex === ERAS.length - 1 && gameSpeed >= SPEED.max) {
+        gameClear();   // 最終形態で限界速度に到達 = クリア
+      }
+    }
+
+    function gameClear() {
+      gameState = 'CLEAR';
+      boosting = false;
+      audio.playEvolution();
+      audio.stopEngine();
+      createEvolutionPillars(player.x + player.width / 2, player.y + player.height);
+      addShockRing(player.x + player.width / 2, player.y + player.height / 2, '#f6d365', 620, 60);
+      flashAmount = 1;
+      hideEvolutionCutin();
+      document.getElementById('clearSpeed').textContent = Math.round(peakSpeed * KMH_PER_UNIT) + ' km/h';
+      document.getElementById('clearDistance').textContent = Math.floor(distance) + ' m';
+      document.getElementById('clearScore').textContent = score;
+      renderJourney('clearJourney');
+      const rec = commitRecord(true);
+      document.getElementById('clearRecord').innerHTML = recordMessage(rec);
+      document.getElementById('clearScreen').classList.remove('hidden');
+      document.getElementById('comboPop').classList.remove('show');
+    }
+
+    /* ==========================================================================
+       Records (進化の記録・進化図鑑)
+       ==========================================================================
+       「今回どこまで進化したか」を毎回言葉にして返し、
+       localStorage に自己ベストを残すことで、走るたびに前進が積み上がる。 */
+    const CODEX_KEY = 'evolution_runner_codex_v1';
+
+    function loadCodex() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(CODEX_KEY));
+        if (raw && typeof raw === 'object') {
+          return { maxEra: raw.maxEra | 0, bestScore: raw.bestScore | 0,
+                   bestSpeed: raw.bestSpeed || 0, cleared: !!raw.cleared };
+        }
+      } catch (e) { /* localStorage が使えない環境では記録なしで動かす */ }
+      return { maxEra: 0, bestScore: 0, bestSpeed: 0, cleared: false };
+    }
+
+    function saveCodex(c) {
+      try { localStorage.setItem(CODEX_KEY, JSON.stringify(c)); } catch (e) {}
+    }
+
+    /* 今回の結果を記録に反映し、何を更新したかを返す */
+    function commitRecord(cleared) {
+      const c = loadCodex();
+      const result = {
+        newEra: currentEraIndex > c.maxEra,
+        newScore: score > c.bestScore,
+        newSpeed: peakSpeed > c.bestSpeed,
+        firstClear: cleared && !c.cleared,
+        prevMaxEra: c.maxEra
+      };
+      c.maxEra = Math.max(c.maxEra, currentEraIndex);
+      c.bestScore = Math.max(c.bestScore, score);
+      c.bestSpeed = Math.max(c.bestSpeed, peakSpeed);
+      c.cleared = c.cleared || cleared;
+      saveCodex(c);
+      renderCodex();
+      return result;
+    }
+
+    function recordMessage(rec) {
+      const lines = [];
+      if (rec.firstClear) lines.push('🏆 <b>初クリア！</b> 人類はついに限界速度を超えた');
+      if (rec.newEra) lines.push(`🧬 <b>自己最高進化を更新！</b> ${ERAS[rec.prevMaxEra].shortName} → ${ERAS[currentEraIndex].shortName}`);
+      if (rec.newScore) lines.push('⭐ ハイスコア更新！');
+      if (rec.newSpeed) lines.push('⚡ 最高速度記録を更新！');
+      if (lines.length === 0) lines.push('記録更新はなし。次はもっと速く。');
+      return lines.map(l => `<div>${l}</div>`).join('');
+    }
+
+    /* 走破した時代を旅の記録として一覧表示する */
+    function renderJourney(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = ERAS.map((era, i) => {
+        const st = eraStats[i] || { reached: false, distance: 0, topSpeed: 0 };
+        if (!st.reached) {
+          return `<div class="journey-row locked">
+                    <span class="journey-icon">🔒</span>
+                    <span class="journey-name">？？？</span>
+                    <span class="journey-val">未到達</span>
+                  </div>`;
+        }
+        return `<div class="journey-row" style="border-left-color:${era.color};">
+                  <span class="journey-icon">${era.icon}</span>
+                  <span class="journey-name" style="color:${era.color};">${era.shortName}</span>
+                  <span class="journey-val">${Math.floor(st.distance)} m ／ 最高 ${Math.round(st.topSpeed * KMH_PER_UNIT)} km/h</span>
+                </div>`;
+      }).join('');
+    }
+
+    /* スタート画面の進化図鑑 (これまでに到達した姿) */
+    function renderCodex() {
+      const el = document.getElementById('codexList');
+      if (!el) return;
+      const c = loadCodex();
+      el.innerHTML = ERAS.map((era, i) => {
+        const unlocked = i <= c.maxEra;
+        return `<div class="codex-chip ${unlocked ? 'unlocked' : ''}"
+                     style="${unlocked ? `border-color:${era.color}; color:${era.color};` : ''}">
+                  <span>${unlocked ? era.icon : '🔒'}</span>
+                  <span>${unlocked ? era.shortName : '？？？'}</span>
+                </div>`;
+      }).join('');
+      const best = document.getElementById('codexBest');
+      if (best) {
+        best.innerHTML = c.bestScore > 0
+          ? `自己ベスト: <b style="color:#f6d365;">${c.bestScore}</b> pt ／ 最高速度 <b style="color:#ff0844;">${Math.round(c.bestSpeed * KMH_PER_UNIT)} km/h</b>${c.cleared ? ' ／ <b style="color:#00f2fe;">CLEAR済</b>' : ''}`
+          : 'まだ記録がありません。まずは1回走ってみよう。';
+      }
+    }
+
+    function showBanner(headline, title, headColor) {
+      const banner = document.getElementById('evolutionBanner');
+      // 進化カットインと同時に出ると文字が重なって読めなくなるため、片方を必ず消す
+      clearTimeout(cutinTimer);
+      document.getElementById('evoCutin').classList.remove('active');
+      banner.querySelector('div').textContent = headline;
+      banner.querySelector('div').style.color = headColor;
+      document.getElementById('evolutionTitle').textContent = title;
+      banner.classList.add('active');
+      clearTimeout(showBanner._t);
+      showBanner._t = setTimeout(() => banner.classList.remove('active'), 1900);
+    }
+
+    /* 現在の時代の「体の性能」をプレイヤーに反映する。
+       進化＝見た目の変化ではなく、跳べる高さ・滞空・燃費が実際に変わることで
+       手のなかで進化を実感させるのがこの関数の役目。 */
+    function applyEraAbilities() {
+      const era = ERAS[currentEraIndex];
+      player.jumpPower = era.jumpPower;
+      player.gravity = era.gravity;
+      player.maxJumps = era.maxJumps;
+      if (player.jumpCount > player.maxJumps) player.jumpCount = player.maxJumps;
+    }
+
+    function triggerEvolution() {
+      currentEraIndex++;
+      const nextEra = ERAS[currentEraIndex];
+
+      applyEraAbilities();
+      eraStats[currentEraIndex].reached = true;
+
+      // 回復ボーナス
+      if (playerHp < maxHp) playerHp++;
+
+      audio.playEvolution();
+      createEvolutionPillars(player.x + player.width / 2, player.y + player.height);
+      const cx = player.x + player.width / 2;
+      const cy = player.y + player.height / 2;
+      addShockRing(cx, cy, '#ffffff', 260, 34);
+      addShockRing(cx, cy, nextEra.color, 380, 44);
+      addShockRing(cx, cy, '#f6d365', 480, 54);
+      addShake(18);
+      flashAmount = 0.85;
+
+      // 世界を一瞬止めて、変わった自分を見せる
+      hitStop = 26;
+      camZoomTarget = 1.34;
+      setTimeout(() => { camZoomTarget = boosting ? 1.06 : 1; }, 900);
+
+      showEvolutionCutin(nextEra);
+      addFloatingText("EVOLUTION!!", player.x, player.y - 30, '#ff0844');
+      updateHUD();
+    }
+
+    function triggerDevolution() {
+      currentEraIndex--;
+      const prevEra = ERAS[currentEraIndex];
+      applyEraAbilities();
+
+      audio.playDevolve();
+      createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#7f8c8d', 18);
+      addShockRing(player.x + player.width / 2, player.y + player.height / 2, '#7f8c8d', 220, 26);
+      addShake(10);
+
+      showBanner('▼ DEVOLUTION... ▼', `${prevEra.name} へ退化した…`, '#95a5a6');
+      addFloatingText("退化…", player.x, player.y - 30, '#95a5a6');
+      updateHUD();
+    }
+
+    /* ==========================================================================
+       Evolution Presentation (進化を「ごほうび」として見せるための演出)
+       ========================================================================== */
+    let cutinTimer = null;
+
+    function showEvolutionCutin(era) {
+      const el = document.getElementById('evoCutin');
+      document.getElementById('evolutionBanner').classList.remove('active');  // 退化バナーとの重なりを防ぐ
+      document.getElementById('evoCutinStep').textContent =
+        `EVOLUTION ${currentEraIndex} / ${ERAS.length - 1}`;
+      document.getElementById('evoCutinIcon').textContent = era.icon;
+      document.getElementById('evoCutinTitle').textContent = era.unlockTitle;
+      document.getElementById('evoCutinName').textContent = era.name;
+      document.getElementById('evoCutinUnlock').innerHTML =
+        era.unlockLines.map(l => `<div>${l}</div>`).join('');
+      renderEvoTrack(document.getElementById('evoCutinTrack'));
+      el.style.setProperty('--era-color', era.color);
+      el.classList.add('active');
+
+      clearTimeout(cutinTimer);
+      cutinTimer = setTimeout(() => el.classList.remove('active'), 2300);
+    }
+
+    function hideEvolutionCutin() {
+      clearTimeout(cutinTimer);
+      document.getElementById('evoCutin').classList.remove('active');
+      document.getElementById('evolutionBanner').classList.remove('active');
+    }
+
+    /* 進化系統ツリー。今どこまで来たのかを常に見せることで、
+       「あと2段階で人類を超える」という前進の実感を維持する。 */
+    function renderEvoTrack(el) {
+      if (!el) return;
+      el.innerHTML = ERAS.map((e, i) => {
+        const state = i < currentEraIndex ? 'done' : (i === currentEraIndex ? 'now' : 'todo');
+        const color = state === 'todo' ? '' : `style="color:${e.color}; border-color:${e.color};"`;
+        return `<span class="evo-node ${state}" ${color}>${e.icon}</span>`;
+      }).join('<span class="evo-link"></span>');
+    }
+
+    function gameOver() {
+      gameState = 'GAMEOVER';
+      boosting = false;
+      audio.playDamage();
+      audio.stopEngine();
+      hideEvolutionCutin();
+      document.getElementById('resultEra').textContent = ERAS[currentEraIndex].name;
+      document.getElementById('resultSpeed').textContent = Math.round(peakSpeed * KMH_PER_UNIT) + ' km/h';
+      document.getElementById('resultCombo').textContent = maxCombo;
+      document.getElementById('resultDistance').textContent = Math.floor(distance) + ' m';
+      document.getElementById('resultScore').textContent = score;
+      renderJourney('resultJourney');
+      const rec = commitRecord(false);
+      document.getElementById('resultRecord').innerHTML = recordMessage(rec);
+      document.getElementById('gameOverScreen').classList.remove('hidden');
+      document.getElementById('comboPop').classList.remove('show');
+    }
+
+    let hudTrackIndex = -1;   // 系統ツリーは時代が変わったときだけ組み直す
+
+    function updateHUD() {
+      const era = ERAS[currentEraIndex];
+      document.getElementById('era-name').textContent = era.name;
+      document.getElementById('era-icon').textContent = era.icon;
+      document.getElementById('hud-era').style.borderColor = era.color;
+      document.getElementById('hud-era').style.color = era.color;
+
+      if (hudTrackIndex !== currentEraIndex) {
+        hudTrackIndex = currentEraIndex;
+        renderEvoTrack(document.getElementById('evoTrack'));
+      }
+
+      document.getElementById('hud-distance').textContent = Math.floor(distance) + ' m';
+      document.getElementById('hud-score').textContent = score;
+
+      // HP表示
+      let hpHearts = '';
+      for (let i = 0; i < maxHp; i++) {
+        hpHearts += i < playerHp ? '❤️' : '🖤';
+      }
+      document.getElementById('hud-hp').textContent = hpHearts;
+
+      // --- 速度メーター ---
+      const kmh = Math.round(effectiveSpeed * KMH_PER_UNIT);
+      document.getElementById('speed-value').textContent = kmh;
+      document.getElementById('speed-peak').textContent = 'MAX ' + Math.round(peakSpeed * KMH_PER_UNIT);
+
+      // 進化ゲージ: 現時代の下限 → 次の進化速度 を 0..100% で表示
+      const floorSpd = currentEraIndex === 0 ? SPEED.start : ERAS[currentEraIndex].devolveAt;
+      const ceilSpd = era.evolveAt === Infinity ? SPEED.max : era.evolveAt;
+      const pct = Math.max(0, Math.min(100, ((gameSpeed - floorSpd) / (ceilSpd - floorSpd)) * 100));
+      document.getElementById('speed-fill').style.width = pct + '%';
+
+      const nextLabel = document.getElementById('speed-next');
+      if (era.evolveAt === Infinity) {
+        nextLabel.textContent = '最終形態 — 限界速度へ';
+      } else {
+        const remain = Math.max(0, Math.round((era.evolveAt - gameSpeed) * KMH_PER_UNIT));
+        nextLabel.textContent = `次の進化まで あと ${remain} km/h`;
+      }
+
+      const panel = document.getElementById('speed-panel');
+      panel.classList.toggle('rushing', speedRatio() > 0.6 || boosting);
+
+      // --- ブーストゲージ ---
+      const bFill = document.getElementById('boost-fill');
+      bFill.style.width = boostFuel + '%';
+      bFill.classList.toggle('burning', boosting);
+      bFill.classList.toggle('empty', boostFuel <= 2);
+      document.getElementById('boost-text').textContent = Math.round(boostFuel) + '%';
+    }
+
+    function updateComboUI() {
+      const pop = document.getElementById('comboPop');
+      if (combo >= 2 && comboTimer > 0) {
+        document.getElementById('comboCount').textContent = '×' + combo;
+        document.getElementById('comboCaption').textContent = combo >= 8 ? 'UNSTOPPABLE!' : 'NEAR MISS!';
+        pop.classList.add('show');
+      } else {
+        pop.classList.remove('show');
+      }
+    }
+
+    /* ==========================================================================
+       Spawning System (障害物・DNA・敵)
+       ========================================================================== */
+    /* 生成は「フレーム間隔」ではなく「走行距離」で管理する。
+       こうしないと速度が上がったときに障害物が詰まって理不尽になる。
+       間隔 = 速度 × 反応フレーム数 なので、何km/hでも反応時間はほぼ一定に保たれる。 */
+    let spawnGapLeft = 240;
+
+    function updateSpawning() {
+      spawnGapLeft -= effectiveSpeed;
+      if (spawnGapLeft > 0) return;
+
+      // 時代が進むほど障害物は詰まり、反応時間も削られる
+      const sp = ERAS[currentEraIndex].spawn;
+      const reactionFrames = sp.base + Math.random() * sp.jitter;
+      spawnGapLeft = effectiveSpeed * reactionFrames;
+
+      if (Math.random() < sp.obstacleRate) {
+        spawnObstacle();
+      } else {
+        spawnDnaCluster();
+      }
+    }
+
+    /* 重み付き抽選 (FORMATIONS の weight を使う) */
+    function pickFormation(list) {
+      let total = 0;
+      for (const f of list) total += f.weight;
+      let r = Math.random() * total;
+      for (const f of list) {
+        r -= f.weight;
+        if (r <= 0) return f;
+      }
+      return list[list.length - 1];
+    }
+
+    /* カタログ定義から実体を1つ生成する */
+    function makeObstacle(def, x) {
+      const obs = {
+        x: x,
+        y: 0,
+        width: def.w,
+        height: def.h,
+        art: def.art,
+        name: def.name,
+        color: def.color,
+        place: def.place,
+        motion: def.motion || null,
+        hp: def.hp || 1,
+        maxHp: def.hp || 1,
+        smashable: def.smashable !== false,
+        charge: def.charge || 0,
+        amp: def.amp || 0,
+        freq: def.freq || 0,
+        diveTo: def.diveTo || 0,
+        age: Math.floor(Math.random() * 60),   // 上下動の位相をずらす
+        spin: 0,
+        flash: 0,
+        passed: false
+      };
+
+      if (def.place === 'hang') {
+        // 下端が地面から clear の高さに来るように吊るす
+        obs.y = GROUND_Y - def.clear - def.h;
+      } else if (def.place === 'air') {
+        obs.baseY = GROUND_Y - def.airY - def.h / 2;
+        obs.y = obs.baseY;
+      } else {
+        obs.y = GROUND_Y - def.h;
+      }
+      return obs;
+    }
+
+    function spawnObstacle() {
+      const era = ERAS[currentEraIndex];
+      const formation = pickFormation(FORMATIONS[era.bgType]);
+
+      // 吊り下がり型は「跳んでいる最中に来たら回避不能」になるため、
+      // 直前の障害物から余分に距離を空けてから出す (着地する時間を保証する)
+      const baseX = canvas.width + 40;
+      const hasHang = formation.items.some(it => OBSTACLES[it.k] && OBSTACLES[it.k].place === 'hang');
+      const originX = baseX + (hasHang ? 360 : 0);
+      let tailX = originX;
+
+      formation.items.forEach(item => {
+        const def = OBSTACLES[item.k];
+        if (!def) return;
+        const obs = makeObstacle(def, originX + (item.dx || 0));
+        obstacles.push(obs);
+        tailX = Math.max(tailX, obs.x + obs.width);
+
+        // 接地障害物の頭上にDNAを配置 → 「跳び越えながら拾う」動線を作る
+        if (def.place === 'ground' && Math.random() < 0.6) {
+          dnas.push({
+            x: obs.x + obs.width / 2 - 10,
+            y: obs.y - 54,
+            width: 20,
+            height: 20,
+            value: 10
+          });
+        }
+      });
+
+      // 編成が横に長いぶん (＋吊り下がり型のリード距離) 次のスポーンを遅らせる
+      spawnGapLeft += (tailX - baseX);
+    }
+
+    function spawnDnaCluster() {
+      const startX = canvas.width + 30;
+      const count = 3 + Math.floor(Math.random() * 3);
+      const isHigh = Math.random() < 0.5;
+      const baseY = isHigh ? 215 : GROUND_Y - 78;
+
+      for (let i = 0; i < count; i++) {
+        dnas.push({
+          x: startX + i * 34,
+          y: baseY + Math.sin(i * 0.8) * 22,
+          width: 20,
+          height: 20,
+          value: 10
+        });
+      }
+    }
+
+    /* ==========================================================================
+       Physics & Game Logic Loop
+       ========================================================================== */
+    function updateGame() {
+      if (gameState !== 'PLAYING') return;
+
+      // ヒットストップ: 衝突・破壊の瞬間だけ world を止めて打撃感を出す
+      if (hitStop > 0) {
+        hitStop--;
+        updateCamera();
+        return;
+      }
+
+      gameFrame++;
+
+      updateSpeedModel();
+      checkEvolutionState();
+
+      distance += effectiveSpeed * 0.06;
+
+      // 時代ごとの走破記録を積む (結果画面の「進化の旅の記録」用)
+      const st = eraStats[currentEraIndex];
+      if (st) {
+        st.distance += effectiveSpeed * 0.06;
+        st.topSpeed = Math.max(st.topSpeed, effectiveSpeed);
+      }
+
+      score += 1 + Math.floor(speedRatio() * 4);   // 速いほど基礎スコアも伸びる
+
+      updatePlayerPhysics();
+      updateProjectiles();
+      updateObstacles();
+      if (gameState !== 'PLAYING') return;         // 上のループでゲームオーバーになった場合
+      updateDnas();
+      updateParticles();
+      updateFloatingTexts();
+
+      spawnSpeedLines();
+      updateSpeedLines();
+      updateAfterImages();
+      updateCamera();
+
+      updateSpawning();
+      updateHUD();
+      updateComboUI();
+    }
+
+    /* 速度モデル: このゲームのすべての手応えがここから派生する */
+    function updateSpeedModel() {
+      // ブースト燃料の増減
+      if (boosting) {
+        // 進化した体ほど燃費が良い (boostEfficiency が小さいほど長く踏める)
+        boostFuel -= SPEED.boostDrain * ERAS[currentEraIndex].boostEfficiency;
+        if (boostFuel <= 0) {
+          boostFuel = 0;
+          setBoost(false);
+          addFloatingText("燃料切れ", player.x, player.y - 20, '#95a5a6');
+        }
+      } else if (boostFuel < 100) {
+        boostFuel = Math.min(100, boostFuel + SPEED.boostRegen);
+      }
+
+      // 上乗せぶんは滑らかに追従させる (瞬間的に切り替えると加速感が出ない)
+      const target = boosting ? SPEED.boostAdd : 0;
+      boostAdd += (target - boostAdd) * 0.10;
+      if (Math.abs(boostAdd - target) < 0.02) boostAdd = target;
+
+      // 素の速度は走り続けるだけでも上がるが、ブースト中は大幅に伸びる。
+      // 進化判定に使うのはこの gameSpeed (= 積み上げた実力) の方。
+      gameSpeed += boosting ? SPEED.boostDrift : SPEED.drift;
+      gameSpeed = Math.max(SPEED.min, Math.min(SPEED.max, gameSpeed));
+
+      effectiveSpeed = Math.min(SPEED.max + SPEED.boostAdd, gameSpeed + boostAdd);
+      if (effectiveSpeed > peakSpeed) peakSpeed = effectiveSpeed;
+
+      audio.setEngine(speedRatio());
+    }
+
+    function updatePlayerPhysics() {
+      player.vy += player.gravity;
+      player.y += player.vy;
+
+      const feetTop = GROUND_Y - player.height;
+      if (player.y >= feetTop) {
+        if (!player.isGrounded) {
+          // 着地の瞬間
+          createDust(player.x + player.width / 2, GROUND_Y);
+          addShake(1.6 + speedRatio() * 3);
+        }
+        player.y = feetTop;
+        player.vy = 0;
+        player.isGrounded = true;
+        player.jumpCount = 0;
+      } else {
+        player.isGrounded = false;
+      }
+
+      // ランサイクル: コマ送り速度を走行速度に直結させる
+      if (player.isGrounded) {
+        player.animTime += 0.11 + effectiveSpeed * 0.031;
+        player.bobOffset = Math.sin(player.animTime * 0.85) * 1.6;
+        const dustEvery = Math.max(2, Math.round(9 - speedRatio() * 6));
+        if (gameFrame % dustEvery === 0) createDust(player.x + 6, GROUND_Y);
+      } else {
+        player.animTime += 0.05;   // 空中はゆっくり (ポーズが止まって見える)
+        player.bobOffset = 0;
+      }
+      player.animFrame = Math.floor(player.animTime) % SHEET.cols;
+
+      // 速いほど前傾姿勢に
+      const leanTarget = speedRatio() * 0.15 + (boosting ? 0.05 : 0);
+      player.leanAngle += (leanTarget - player.leanAngle) * 0.08;
+
+      // 残像: 高速時とブースト時だけ発生させて「置き去りにしている」感を出す
+      if ((boosting || speedRatio() > 0.42) && gameFrame % 3 === 0) {
+        const g = playerDrawGeometry();
+        pushAfterImage(player.animFrame, g.x, g.y, g.w, g.h, player.leanAngle);
+      }
+
+      // 攻撃タイマー
+      if (player.isAttacking) {
+        player.attackTimer--;
+        if (player.attackTimer <= 0) player.isAttacking = false;
+      }
+
+      // 無敵タイマー (ダメージ後)
+      if (player.invulnerableTimer > 0) player.invulnerableTimer--;
+    }
+
+    /* スプライトの描画矩形。drawPlayer と残像で同じ計算を使うため関数に切り出す。 */
+    function playerDrawGeometry() {
+      const era = ERAS[currentEraIndex];
+      const h = 98 * era.spriteScale;
+      const w = h * (SHEET.cellW / SHEET.cellH);
+      const cx = player.x + player.width / 2;
+      return {
+        w: w,
+        h: h,
+        x: cx - w * SHEET.bodyAnchorX,
+        y: player.y + player.height - h + player.bobOffset   // 足元をヒットボックス下端に合わせる
+      };
+    }
+
+    function updateCamera() {
+      updateShockRings();   // ヒットストップ中も進化演出だけは動かし続ける
+      shakeAmount *= 0.86;
+      if (shakeAmount < 0.1) shakeAmount = 0;
+
+      camZoom += (camZoomTarget - camZoom) * 0.12;
+      flashAmount *= 0.88;
+      if (flashAmount < 0.01) flashAmount = 0;
+
+      if (comboTimer > 0) {
+        comboTimer--;
+        if (comboTimer === 0) combo = 0;
+      }
+    }
+
+    function updateProjectiles() {
+      for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx;
+        p.life--;
+
+        // 障害物との当たり判定 (破壊不能な障害物は素通りする)
+        for (let j = obstacles.length - 1; j >= 0; j--) {
+          const obs = obstacles[j];
+          if (!obs.smashable) continue;
+          if (checkCollision(p, obs)) {
+            damageObstacle(obs, j, 50, "SMASH!");
+            // ビームだけは貫通する (サイボーグの特権)
+            if (p.type !== 'laser') p.life = 0;
+            break;
+          }
+        }
+
+        if (p.life <= 0 || p.x > canvas.width + 50) {
+          projectiles.splice(i, 1);
+        }
+      }
+    }
+
+    /* 障害物ごとの固有の動き。これがあることで「置いてあるだけ」でなくなる。 */
+    function updateObstacleMotion(obs) {
+      obs.age++;
+      if (obs.flash > 0) obs.flash--;
+
+      if (obs.motion === 'sine') {
+        // 走行高度 (GROUND_Y-72) まで沈み込むので、走っているだけでは当たる
+        obs.y = obs.baseY + Math.sin(obs.age * obs.freq) * obs.amp;
+      } else if (obs.motion === 'dive') {
+        // プレイヤーに近づくと急降下して襲いかかる
+        const d = obs.x - player.x;
+        if (d < 320) {
+          const target = GROUND_Y - obs.diveTo - obs.height;
+          obs.y = Math.min(target, obs.baseY + (320 - d) * 0.55);
+        }
+      } else if (obs.motion === 'charge') {
+        // スクロールに上乗せして自分から突っ込んでくる
+        obs.x -= obs.charge;
+      } else if (obs.motion === 'roll') {
+        obs.spin += effectiveSpeed * 0.055;
+      }
+    }
+
+    /* 攻撃が当たったときの共通処理。hp が残っていれば怯むだけ。 */
+    function damageObstacle(obs, index, points, label) {
+      obs.hp--;
+      audio.playHit();
+      if (obs.hp > 0) {
+        obs.flash = 8;
+        createExplosion(obs.x + obs.width / 2, obs.y + obs.height / 2, '#ffffff', 6);
+        addFloatingText("HIT!", obs.x, obs.y - 10, '#dfe6e9');
+        addShake(3);
+        return false;
+      }
+      createExplosion(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.color, 16);
+      addFloatingText(`+${points} ${label}`, obs.x, obs.y - 10, '#ff0844');
+      score += points;
+      gameSpeed = Math.min(SPEED.max, gameSpeed + SPEED.perSmash);
+      addShake(6);
+      hitStop = 3;
+      obstacles.splice(index, 1);
+      return true;
+    }
+
+    function updateObstacles() {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        updateObstacleMotion(obs);
+        obs.x -= effectiveSpeed;
+
+        // プレイヤーの近接攻撃との当たり判定 (棍棒・引っかき等)
+        if (obs.smashable && obs.flash === 0 && player.isAttacking &&
+            (ERAS[currentEraIndex].weaponType === 'club' || ERAS[currentEraIndex].weaponType === 'claw')) {
+          const attackBox = {
+            x: player.x + player.width,
+            y: player.y - 10,
+            width: ERAS[currentEraIndex].attackRange,
+            height: player.height + 20
+          };
+          if (checkCollision(attackBox, obs)) {
+            damageObstacle(obs, i, 100, "BREAK!");
+            continue;
+          }
+        }
+
+        // プレイヤーとの衝突判定 (見た目より内側の判定を使う)
+        if (player.invulnerableTimer === 0 && checkCollision(player, obstacleHitBox(obs))) {
+          onPlayerHit(obs);
+          obstacles.splice(i, 1);
+          if (gameState !== 'PLAYING') return;
+          continue;
+        }
+
+        // すり抜けた瞬間のニアミス判定 (加速とコンボの主要な稼ぎどころ)
+        if (!obs.passed && obs.x + obs.width < player.x) {
+          obs.passed = true;
+          const gapY = Math.max(obs.y - (player.y + player.height),
+                                player.y - (obs.y + obs.height));
+          if (gapY >= 0 && gapY < SPEED.nearMissGap) registerNearMiss(obs);
+        }
+
+        if (obs.x < -80) {
+          obstacles.splice(i, 1);
+        }
+      }
+    }
+
+    /* 障害物は「見た目は大きく、当たり判定は小さく」。
+       見た目どおりの判定にすると、跳ぶタイミングの許容幅が数フレームまで狭まって
+       理不尽になるため、ダメージ判定だけ左右22%ずつ内側に寄せる。
+       一方ニアミス判定は見た目の箱で行うので、掠める快感はそのまま残る。 */
+    function obstacleHitBox(obs) {
+      const inset = obs.width * 0.22;
+      if (obs.place === 'hang') {
+        // 吊り下がり型は「上を飛び越えて回避」をさせない。
+        // 画面上端まで判定を伸ばし、跳ばずに走り抜ける以外の答えを消す。
+        const bottom = obs.y + obs.height;
+        return {
+          x: obs.x + inset,
+          y: -400,
+          width: obs.width - inset * 2,
+          height: bottom + 400 - 4
+        };
+      }
+      return {
+        x: obs.x + inset,
+        y: obs.y + 4,
+        width: obs.width - inset * 2,
+        height: obs.height - 4
+      };
+    }
+
+    function onPlayerHit(obs) {
+      audio.playDamage();
+      playerHp--;
+      player.invulnerableTimer = 70;
+
+      // 被弾＝減速。速度が下がりすぎると退化するので、これが最大のペナルティ。
+      gameSpeed = Math.max(SPEED.min, gameSpeed - SPEED.hitPenalty);
+      boostAdd = 0;
+      setBoost(false);
+      combo = 0;
+      comboTimer = 0;
+
+      createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#ff0844', 20);
+      createExplosion(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.color, 12);
+      addFloatingText("SLOW DOWN! -1 HP", player.x - 20, player.y - 20, '#ff0844');
+      addShake(18);
+      flashAmount = 0.5;
+      hitStop = 6;
+
+      if (playerHp <= 0) {
+        gameOver();
+      }
+    }
+
+    function registerNearMiss(obs) {
+      combo++;
+      maxCombo = Math.max(maxCombo, combo);
+      comboTimer = 160;
+
+      gameSpeed = Math.min(SPEED.max, gameSpeed + SPEED.perNearMiss);
+      const bonus = 60 * combo;
+      score += bonus;
+
+      audio.playNearMiss(combo);
+      addFloatingText(`NEAR MISS +${bonus}`, obs.x, obs.y - 14, '#f6d365');
+      createExplosion(obs.x + obs.width / 2, obs.y, '#f6d365', 5);
+      flashAmount = Math.max(flashAmount, 0.16);
+      addShake(3);
+    }
+
+    function updateDnas() {
+      for (let i = dnas.length - 1; i >= 0; i--) {
+        const d = dnas[i];
+        d.x -= effectiveSpeed;
+
+        // 現代人/未来人の磁石効果 (速いほど吸引も強くなる)
+        if (currentEraIndex >= 3) {
+          const dx = (player.x + player.width / 2) - (d.x + d.width / 2);
+          const dy = (player.y + player.height / 2) - (d.y + d.height / 2);
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const reach = 150 + speedRatio() * 90;
+          if (dist < reach) {
+            const pull = 6 + effectiveSpeed * 0.35;
+            d.x += (dx / dist) * pull;
+            d.y += (dy / dist) * pull;
+          }
+        }
+
+        if (checkCollision(player, d)) {
+          audio.playDna();
+          // DNA = ブースト燃料。拾うほど長くブーストでき、そのぶん速度も伸びる。
+          boostFuel = Math.min(100, boostFuel + SPEED.fuelPerDna);
+          gameSpeed = Math.min(SPEED.max, gameSpeed + SPEED.perDna);
+          score += 20 * Math.max(1, combo);
+          createExplosion(d.x + d.width / 2, d.y + d.height / 2, '#00f2fe', 6);
+          addFloatingText(`+${SPEED.fuelPerDna} FUEL`, d.x, d.y, '#00f2fe');
+          dnas.splice(i, 1);
+          continue;
+        }
+
+        if (d.x < -40) {
+          dnas.splice(i, 1);
+        }
+      }
+    }
+
+    function updateParticles() {
+      // パーティクルもワールドと一緒に後方へ流す (置いてけぼり感を出す)
+      const drag = effectiveSpeed * 0.4;
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx - drag;
+        pt.y += pt.vy;
+        pt.life--;
+        if (pt.life <= 0 || pt.x < -30) {
+          particles.splice(i, 1);
+        }
+      }
+    }
+
+    function updateFloatingTexts() {
+      const drag = effectiveSpeed * 0.55;
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.x -= drag;
+        ft.y += ft.vy;
+        ft.life--;
+        if (ft.life <= 0 || ft.x < -160) {
+          floatingTexts.splice(i, 1);
+        }
+      }
+    }
+
+    function checkCollision(rect1, rect2) {
+      return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+      );
+    }
+
+    /* ==========================================================================
+       Rendering: Dynamic Parallax Backgrounds & Pixel Characters
+       ========================================================================== */
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const era = ERAS[currentEraIndex];
+
+      ctx.save();
+      applyCameraTransform();
+
+      drawSky(era);
+      drawParallax(era);
+      drawGround(era);
+      drawWeather(era, false);   // 天候 (奥側)
+      drawSpeedLines(false);     // 奥側の速度線
+      drawDnaItems();
+      drawObstacles();
+      drawProjectiles();
+      drawAfterImages();
+      drawPlayer(era);
+      drawParticles();
+      drawShockRings();          // 進化の衝撃波
+      drawWeather(era, true);    // 天候 (手前側)
+      drawSpeedLines(true);      // 手前側の速度線 (キャラの上を横切らせる)
+      drawFloatingTexts();
+
+      ctx.restore();
+
+      // 画面全体にかかる演出はカメラ変形の外側で
+      drawSpeedVignette();
+      drawFlash();
+      drawCrtScanlines();
+    }
+
+    /* ズームと画面振動。ワールド全体に効かせる。 */
+    function applyCameraTransform() {
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      ctx.translate(cx, cy);
+      ctx.scale(camZoom, camZoom);
+      ctx.translate(-cx, -cy);
+      if (shakeAmount > 0) {
+        ctx.translate((Math.random() - 0.5) * shakeAmount,
+                      (Math.random() - 0.5) * shakeAmount);
+      }
+    }
+
+    // ズーム・シェイクで端が透けないよう、常に画面より一回り大きく描く
+    const OB = 90;   // overdraw margin
+
+    function drawSky(era) {
+      const skyGrad = ctx.createLinearGradient(0, -OB, 0, canvas.height + OB);
+      skyGrad.addColorStop(0, era.skyGradient[0]);
+      skyGrad.addColorStop(0.5, era.skyGradient[1]);
+      skyGrad.addColorStop(1, era.skyGradient[2]);
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(-OB, -OB, canvas.width + OB * 2, canvas.height + OB * 2);
+      drawSkyDecor(era);
+    }
+
+    function drawSkyDecor(era) {
+      ctx.save();
+      if (era.bgType === 'city' || era.bgType === 'cyber' || era.bgType === 'ice_age') {
+        // 星 (スクロールしない = 無限遠)
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        for (let i = 0; i < 40; i++) {
+          const sx = (i * 197) % canvas.width;
+          const sy = (i * 71) % 200;
+          const tw = 0.5 + 0.5 * Math.sin(gameFrame * 0.05 + i);
+          ctx.globalAlpha = 0.3 + tw * 0.5;
+          ctx.fillRect(sx, sy, 2, 2);
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      // 氷河期の空にはオーロラを流す (この時代の顔になる要素)
+      if (era.bgType === 'ice_age') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const bands = ['rgba(0,255,190,0.26)', 'rgba(110,180,255,0.22)', 'rgba(190,120,255,0.18)'];
+        bands.forEach((col, b) => {
+          const grad = ctx.createLinearGradient(0, 20, 0, 240);
+          grad.addColorStop(0, 'rgba(255,255,255,0)');
+          grad.addColorStop(0.45, col);
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(-OB, 250);
+          for (let x = -OB; x <= canvas.width + OB; x += 20) {
+            const t = gameFrame * 0.007 + b * 1.4;
+            const y = 52 + b * 24 + Math.sin(x * 0.011 + t) * 26 + Math.cos(x * 0.023 - t * 1.5) * 13;
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(canvas.width + OB, 250);
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      // サイバー未来はネオンの地平線グリッド
+      if (era.bgType === 'cyber') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0,242,254,0.22)';
+        ctx.lineWidth = 1;
+        const horizon = 250;
+        for (let i = 1; i <= 6; i++) {
+          const yy = horizon + i * i * 3.2;
+          ctx.beginPath(); ctx.moveTo(-OB, yy); ctx.lineTo(canvas.width + OB, yy); ctx.stroke();
+        }
+        for (let i = -6; i <= 6; i++) {
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2 + i * 30, horizon);
+          ctx.lineTo(canvas.width / 2 + i * 210, horizon + 130);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 太陽 / 月
+      const sun = { jungle: '#ffeaa7', savanna: '#ff7675', ice_age: '#e9f6ff',
+                    city: '#dfe6e9', cyber: '#ff0844' }[era.bgType];
+      ctx.fillStyle = sun;
+      ctx.shadowColor = sun;
+      ctx.shadowBlur = 40;
+      ctx.beginPath();
+      ctx.arc(620, 105, era.bgType === 'savanna' ? 58 : 38, 0, Math.PI * 2);
+      ctx.fill();
+      // 氷河期は太陽の周りに幻日環 (寒さの記号)
+      if (era.bgType === 'ice_age') {
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(233,246,255,0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(620, 105, 62, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    /* 天候レイヤー。時代の空気感を一発で伝える。
+       front=true でキャラの手前に重ねる (奥行きが出る) */
+    function drawWeather(era, front) {
+      const t = gameFrame;
+      const scroll = weatherScroll;
+      ctx.save();
+      if (era.bgType === 'ice_age') {
+        // 吹雪。走行速度に応じて横殴りになる
+        const n = front ? 26 : 80;
+        for (let i = 0; i < n; i++) {
+          const depth = front ? 0.9 + (i % 3) * 0.35 : 0.35 + (i % 5) * 0.16;
+          const x = posMod(i * 149 - scroll * depth * 1.9 + Math.sin(t * 0.02 + i) * 16, canvas.width + 200) - 100;
+          const y = posMod(i * 97 + t * depth * 1.5, canvas.height + 140) - 70;
+          const s = 1.4 + depth * 2.2;
+          ctx.globalAlpha = (front ? 0.5 : 0.3) + depth * 0.3;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, y, s, s);
+        }
+      } else if (era.bgType === 'savanna') {
+        if (front) { ctx.restore(); return; }
+        // 熱風に舞う火の粉と砂塵
+        for (let i = 0; i < 45; i++) {
+          const depth = 0.4 + (i % 4) * 0.2;
+          const x = posMod(i * 173 - scroll * depth * 2.4, canvas.width + 160) - 80;
+          const y = posMod(i * 61 - t * depth * 0.5, canvas.height - 60) + 40;
+          ctx.globalAlpha = 0.18 + depth * 0.3;
+          ctx.fillStyle = i % 3 === 0 ? '#ff8c42' : '#d9a066';
+          ctx.fillRect(x, y, 3 + depth * 2, 2);
+        }
+      } else if (era.bgType === 'jungle') {
+        if (front) { ctx.restore(); return; }
+        // 舞い落ちる葉と光の粒
+        for (let i = 0; i < 34; i++) {
+          const depth = 0.4 + (i % 4) * 0.2;
+          const x = posMod(i * 191 - scroll * depth * 2.0, canvas.width + 160) - 80;
+          const y = posMod(i * 83 + t * depth * 0.9, canvas.height + 80) - 40;
+          ctx.globalAlpha = 0.25 + depth * 0.35;
+          ctx.fillStyle = i % 4 === 0 ? '#f6d365' : '#2ecc71';
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(t * 0.05 + i);
+          ctx.fillRect(-4, -2, 8, 4);
+          ctx.restore();
+        }
+      } else if (era.bgType === 'city') {
+        // 細い雨
+        const n = front ? 20 : 55;
+        ctx.strokeStyle = 'rgba(180,220,255,0.45)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < n; i++) {
+          const depth = front ? 1.1 : 0.5 + (i % 4) * 0.2;
+          const x = posMod(i * 137 - scroll * depth * 2.6, canvas.width + 200) - 100;
+          const y = posMod(i * 71 + t * depth * 12, canvas.height + 120) - 60;
+          ctx.globalAlpha = front ? 0.4 : 0.25;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 7 * depth, y + 16 * depth); ctx.stroke();
+        }
+      } else if (era.bgType === 'cyber') {
+        // 流れるデータ片
+        const n = front ? 18 : 44;
+        for (let i = 0; i < n; i++) {
+          const depth = front ? 1.2 : 0.4 + (i % 5) * 0.18;
+          const x = posMod(i * 157 - scroll * depth * 3.0, canvas.width + 200) - 100;
+          const y = posMod(i * 89 + Math.sin(t * 0.03 + i) * 30, canvas.height) ;
+          ctx.globalAlpha = (front ? 0.45 : 0.3) + depth * 0.2;
+          ctx.fillStyle = i % 3 === 0 ? '#ff0844' : '#00f2fe';
+          ctx.fillRect(x, y, 14 * depth, 2);
+        }
+      }
+      ctx.restore();
+    }
+
+    /* 常に正の剰余 (背景ループ計算用) */
+    function posMod(v, m) {
+      return ((v % m) + m) % m;
+    }
+
+    /* 3層パララックス。層ごとにスクロール速度を変え、奥ほどゆっくり流す。
+       この速度差が「奥行きのある疾走感」を作る。 */
+    function drawParallax(era) {
+      const spd = effectiveSpeed;
+      bgScroll   = (bgScroll   + spd * 0.10) % 400;
+      midScroll  = (midScroll  + spd * 0.30) % 240;
+      nearScroll = (nearScroll + spd * 0.66) % 180;
+      weatherScroll = (weatherScroll + spd) % 100000;
+
+      drawFarRidge(era);
+      drawMidLayer(era);
+      drawNearLayer(era);
+    }
+
+    // 遠景: なだらかな稜線 / スカイライン
+    function drawFarRidge(era) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(-OB, canvas.height + OB);
+      for (let x = -OB; x <= canvas.width + OB; x += 20) {
+        const nx = (x + bgScroll) * 0.008;
+        const y = 205 + Math.sin(nx) * 48 + Math.cos(nx * 2.3) * 22;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(canvas.width + OB, canvas.height + OB);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 中景: 時代ごとに形を変える
+    function drawMidLayer(era) {
+      const baseY = 300;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+
+      for (let i = -1; i * 240 - midScroll < canvas.width + OB; i++) {
+        const ox = i * 240 - midScroll;
+
+        if (era.bgType === 'jungle') {
+          drawTreeSilhouette(ox + 40, baseY, 74);
+          drawTreeSilhouette(ox + 150, baseY, 56);
+          drawHangingVines(ox + 95, i);
+        } else if (era.bgType === 'savanna') {
+          drawAcacia(ox + 70, baseY, 62);
+          ctx.beginPath();
+          ctx.ellipse(ox + 175, baseY + 20, 90, 34, 0, Math.PI, 0);
+          ctx.fill();
+        } else if (era.bgType === 'ice_age') {
+          // 氷河・針葉樹・マンモスの群れ・骨のテント で氷河期の暮らしを見せる
+          drawGlacier(ox + 20, baseY, 120, 96);
+          drawGlacier(ox + 148, baseY, 80, 62);
+          drawFrozenPine(ox + 118, baseY + 6, 56);
+          if (i % 2 === 0) drawMammothHerd(ox + 60, baseY + 18);
+          if (i % 3 === 1) drawBoneTent(ox + 196, baseY + 20);
+        } else {
+          drawBuilding(ox + 20, baseY, 62, 130 + (i * 37) % 90, era.bgType === 'cyber');
+          drawBuilding(ox + 100, baseY, 48, 90 + (i * 53) % 70, era.bgType === 'cyber');
+          drawBuilding(ox + 165, baseY, 56, 150 + (i * 29) % 60, era.bgType === 'cyber');
+        }
+      }
+      ctx.restore();
+    }
+
+    // 近景: 地面際を高速で流れるオブジェクト。速度を最も強く体感させる層。
+    function drawNearLayer(era) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      for (let i = -1; i * 180 - nearScroll < canvas.width + OB; i++) {
+        const ox = i * 180 - nearScroll;
+        const gy = GROUND_TOP + 2;
+        if (era.bgType === 'jungle' || era.bgType === 'savanna') {
+          ctx.beginPath();
+          ctx.ellipse(ox + 30, gy, 34, 18, 0, Math.PI, 0);
+          ctx.fill();
+        } else if (era.bgType === 'ice_age') {
+          // せり上がった氷塊と雪の吹き溜まり
+          ctx.beginPath();
+          ctx.moveTo(ox, gy); ctx.lineTo(ox + 24, gy - 34); ctx.lineTo(ox + 48, gy);
+          ctx.closePath(); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(ox + 74, gy); ctx.lineTo(ox + 88, gy - 18); ctx.lineTo(ox + 104, gy);
+          ctx.closePath(); ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(ox + 140, gy + 2, 40, 12, 0, Math.PI, 0);
+          ctx.fill();
+        } else {
+          // 街灯 / ネオンポール
+          ctx.fillRect(ox + 20, gy - 62, 5, 62);
+          ctx.fillRect(ox + 12, gy - 66, 21, 6);
+          if (era.bgType === 'cyber') {
+            ctx.save();
+            ctx.fillStyle = '#00f2fe';
+            ctx.shadowColor = '#00f2fe';
+            ctx.shadowBlur = 12;
+            ctx.fillRect(ox + 12, gy - 66, 21, 3);
+            ctx.restore();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawTreeSilhouette(x, baseY, h) {
+      ctx.fillRect(x - 5, baseY - h * 0.5, 10, h * 0.5 + 90);
+      ctx.beginPath();
+      ctx.arc(x, baseY - h * 0.55, h * 0.52, 0, Math.PI * 2);
+      ctx.arc(x - h * 0.4, baseY - h * 0.3, h * 0.36, 0, Math.PI * 2);
+      ctx.arc(x + h * 0.4, baseY - h * 0.3, h * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawAcacia(x, baseY, h) {
+      ctx.fillRect(x - 4, baseY - h, 8, h + 90);
+      ctx.beginPath();
+      ctx.ellipse(x, baseY - h - 8, h * 0.85, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ジャングルの垂れ蔓 (中景の隙間を埋めて密林感を出す)
+    function drawHangingVines(x, seed) {
+      for (let v = 0; v < 3; v++) {
+        const vx = x + v * 26 + (seed * 17) % 20;
+        const len = 60 + ((seed * 31 + v * 47) % 70);
+        ctx.fillRect(vx, 0, 3, len);
+        ctx.beginPath();
+        ctx.ellipse(vx + 1, len, 7, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 氷河期の針葉樹 (雪をかぶったモミの木)
+    function drawFrozenPine(x, baseY, h) {
+      ctx.fillRect(x - 3, baseY - 6, 6, 96);
+      for (let i = 0; i < 3; i++) {
+        const w = 30 - i * 8;
+        const y = baseY - i * (h * 0.3);
+        ctx.beginPath();
+        ctx.moveTo(x, y - h * 0.42);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x - w, y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // 氷原を横切るマンモスの群れ (遠景シルエット)
+    function drawMammothHerd(x, baseY) {
+      const bob = Math.sin(gameFrame * 0.03) * 2;
+      [[0, 1.0], [46, 0.66], [80, 0.5]].forEach(([dx, s], i) => {
+        const bx = x + dx, by = baseY + bob * (i % 2 ? -1 : 1);
+        ctx.beginPath();
+        ctx.ellipse(bx, by - 16 * s, 24 * s, 15 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(bx - 22 * s, by - 14 * s, 10 * s, 10 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(bx - 16 * s, by - 4 * s, 6 * s, 14 * s);
+        ctx.fillRect(bx + 10 * s, by - 4 * s, 6 * s, 14 * s);
+        ctx.beginPath();                                    // 鼻と牙
+        ctx.moveTo(bx - 30 * s, by - 12 * s);
+        ctx.lineTo(bx - 34 * s, by + 6 * s);
+        ctx.lineTo(bx - 28 * s, by + 6 * s);
+        ctx.closePath();
+        ctx.fill();
+      });
+    }
+
+    // マンモスの骨と毛皮で作った狩猟民のテント
+    function drawBoneTent(x, baseY) {
+      ctx.beginPath();
+      ctx.moveTo(x - 34, baseY + 26);
+      ctx.lineTo(x, baseY - 40);
+      ctx.lineTo(x + 34, baseY + 26);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(x - 3, baseY - 52, 6, 18);              // 頂点から突き出た支柱
+      ctx.beginPath();                                      // 立てかけた牙
+      ctx.moveTo(x + 34, baseY + 26);
+      ctx.quadraticCurveTo(x + 58, baseY, x + 46, baseY - 26);
+      ctx.quadraticCurveTo(x + 52, baseY + 4, x + 40, baseY + 26);
+      ctx.fill();
+      const flick = 4 + Math.sin(gameFrame * 0.3) * 2;      // 焚き火
+      ctx.beginPath();
+      ctx.ellipse(x - 52, baseY + 22, 10, flick, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawGlacier(x, baseY, w, h) {
+      ctx.beginPath();
+      ctx.moveTo(x, baseY + 90);
+      ctx.lineTo(x + w * 0.28, baseY - h * 0.7);
+      ctx.lineTo(x + w * 0.5, baseY - h);
+      ctx.lineTo(x + w * 0.72, baseY - h * 0.55);
+      ctx.lineTo(x + w, baseY + 90);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawBuilding(x, baseY, w, h, neon) {
+      ctx.fillRect(x, baseY - h, w, h + 90);
+      // 窓明かり (点滅させず固定パターンにして視線の邪魔をしない)
+      ctx.save();
+      ctx.fillStyle = neon ? 'rgba(0, 242, 254, 0.55)' : 'rgba(246, 211, 101, 0.4)';
+      for (let wy = baseY - h + 12; wy < baseY - 10; wy += 20) {
+        for (let wx = x + 8; wx < x + w - 8; wx += 16) {
+          if ((Math.floor(wx * 0.13) + Math.floor(wy * 0.21)) % 3 !== 0) continue;
+          ctx.fillRect(wx, wy, 6, 8);
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawGround(era) {
+      groundScroll = (groundScroll + effectiveSpeed) % 120;
+      const top = GROUND_TOP;
+
+      // 地層
+      ctx.fillStyle = era.groundColor;
+      ctx.fillRect(-OB, top, canvas.width + OB * 2, canvas.height - top + OB);
+
+      // 地面エッジ
+      ctx.fillStyle = era.grassColor;
+      ctx.fillRect(-OB, top, canvas.width + OB * 2, 10);
+
+      // 路面の流れ線。速度に比例して長く伸びるので、路面自体が速度計になる。
+      const len = 24 + speedRatio() * 150;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+      for (let x = -groundScroll - OB; x < canvas.width + OB; x += 120) {
+        ctx.fillRect(x, top + 18, len, 3);
+        ctx.fillRect(x + 60, top + 40, len * 0.65, 2);
+      }
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+      for (let x = -groundScroll - OB; x < canvas.width + OB; x += 60) {
+        ctx.fillRect(x + 20, top + 58, len * 0.8, 4);
+      }
+    }
+
+    /* 速度線: 画面を横切る白い筋。疾走感の主役。 */
+    function drawSpeedLines(front) {
+      ctx.save();
+      ctx.lineCap = 'butt';
+      speedLines.forEach(s => {
+        if (!!s.front !== front) return;
+        ctx.globalAlpha = s.alpha;
+        ctx.fillStyle = s.color;
+        ctx.fillRect(s.x, s.y, s.len, s.width);
+      });
+      ctx.restore();
+    }
+
+    /* 周辺減光。速いほど画面の四隅が締まり、視野が狭くなる感覚を作る。 */
+    function drawSpeedVignette() {
+      const t = speedRatio();
+      if (t < 0.02 && !boosting) return;
+      const strength = Math.min(0.72, t * 0.7 + (boosting ? 0.14 : 0));
+      const g = ctx.createRadialGradient(
+        canvas.width * 0.42, canvas.height / 2, canvas.height * 0.22,
+        canvas.width * 0.42, canvas.height / 2, canvas.height * (0.95 - t * 0.28)
+      );
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, `rgba(${boosting ? '40,8,0' : '0,0,0'},${strength})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawFlash() {
+      if (flashAmount <= 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashAmount * 0.5})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    }
+
+    function drawDnaItems() {
+      dnas.forEach(d => {
+        const bob = Math.sin(gameFrame * 0.15 + d.x) * 4;
+        ctx.save();
+        ctx.translate(d.x + d.width/2, d.y + d.height/2 + bob);
+
+        // 🧬 DNA二重らせんのドット風描画
+        const time = gameFrame * 0.1;
+        ctx.fillStyle = '#00f2fe';
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 8;
+        
+        ctx.beginPath();
+        ctx.arc(Math.sin(time) * 8, -6, 5, 0, Math.PI * 2);
+        ctx.arc(-Math.sin(time) * 8, 6, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f6d365';
+        ctx.shadowColor = '#f6d365';
+        ctx.beginPath();
+        ctx.arc(-Math.sin(time + 1.5) * 8, -6, 4, 0, Math.PI * 2);
+        ctx.arc(Math.sin(time + 1.5) * 8, 6, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // らせんの結合棒
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.sin(time) * 8, -6);
+        ctx.lineTo(-Math.sin(time + 1.5) * 8, -6);
+        ctx.moveTo(-Math.sin(time) * 8, 6);
+        ctx.lineTo(Math.sin(time + 1.5) * 8, 6);
+        ctx.stroke();
+
+        ctx.restore();
+      });
+    }
+
+    function drawObstacles() {
+      const smear = speedRatio();
+      obstacles.forEach(obs => {
+        // 高速時は後方に伸びる残像を重ねてブレを表現
+        if (smear > 0.25) {
+          ctx.save();
+          ctx.globalAlpha = 0.16 * smear;
+          ctx.fillStyle = obs.color;
+          ctx.fillRect(obs.x + 6, obs.y + 4, obs.width + 60 * smear, obs.height - 8);
+          ctx.restore();
+        }
+
+        // 吊り下がり型は天井までの支持体を描き、「上には抜けられない」ことを見せる
+        if (obs.place === 'hang') drawHangAnchor(obs);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = 4;
+        const art = OBSTACLE_ART[obs.art];
+        if (art) art(obs); else drawArtFallback(obs);
+        // 被弾直後は白く光らせる (耐久のある敵に手応えを出す)
+        if (obs.flash > 0) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = obs.flash / 12;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(obs.x - 2, obs.y - 2, obs.width + 4, obs.height + 4);
+        }
+        ctx.restore();
+
+        if (obs.maxHp > 1) drawObstacleHp(obs);
+
+        // 吊り下がり型は「跳ぶと当たる」という直感に反する障害物なので、
+        // 近づいたら警告を出して判断材料を先に渡す (理不尽さの排除)
+        if (obs.place === 'hang' && obs.x - player.x < 420 && obs.x + obs.width > player.x) {
+          ctx.save();
+          ctx.globalAlpha = 0.6 + 0.4 * Math.sin(gameFrame * 0.3);
+          ctx.fillStyle = '#f6d365';
+          ctx.font = 'bold 13px DotGothic16, monospace';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 5;
+          ctx.fillText('⚠ 跳ぶな', obs.x + obs.width / 2, obs.y + obs.height + 26);
+          ctx.restore();
+        }
+      });
+      ctx.textAlign = 'left';
+    }
+
+    /* 角丸矩形パス (障害物の描画で多用する) */
+    function roundRectPath(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
+    }
+
+    function drawArtFallback(o) {
+      ctx.fillStyle = o.color;
+      ctx.fillRect(o.x, o.y, o.width, o.height);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(o.x, o.y, o.width, o.height);
+    }
+
+    /* 吊り下がり型の支持体 (蔓 / 氷の張り出し / 鎖 / エネルギー柱) */
+    function drawHangAnchor(o) {
+      const cx = o.x + o.width / 2;
+      ctx.save();
+      if (o.art === 'hive') {
+        ctx.strokeStyle = '#2f6b3a'; ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(cx, -20);
+        ctx.quadraticCurveTo(cx + 14, o.y * 0.5, cx, o.y + 4);
+        ctx.stroke();
+      } else if (o.art === 'icefang') {
+        ctx.fillStyle = '#8fb6cc';
+        ctx.beginPath();
+        ctx.moveTo(o.x - 26, -20);
+        ctx.lineTo(o.x + o.width + 26, -20);
+        ctx.lineTo(o.x + o.width + 10, o.y + 8);
+        ctx.lineTo(o.x - 10, o.y + 8);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(o.x - 20, o.y - 6, o.width + 40, 5);
+      } else if (o.art === 'signboard') {
+        ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(o.x + 14, -20); ctx.lineTo(o.x + 14, o.y);
+        ctx.moveTo(o.x + o.width - 14, -20); ctx.lineTo(o.x + o.width - 14, o.y);
+        ctx.stroke();
+      } else if (o.art === 'ceiling') {
+        ctx.fillStyle = 'rgba(253, 121, 168, 0.18)';
+        ctx.fillRect(o.x, -20, o.width, o.y + 20);
+        ctx.strokeStyle = 'rgba(253, 121, 168, 0.5)'; ctx.lineWidth = 2;
+        ctx.strokeRect(o.x, -20, o.width, o.y + 20);
+      }
+      ctx.restore();
+    }
+
+    function drawObstacleHp(o) {
+      const w = o.width * 0.8;
+      const x = o.x + (o.width - w) / 2;
+      const y = o.y - 12;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x, y, w, 5);
+      ctx.fillStyle = o.hp > 1 ? '#f6d365' : '#ff0844';
+      ctx.fillRect(x, y, w * (o.hp / o.maxHp), 5);
+      ctx.restore();
+    }
+
+    /* ==========================================================================
+       Obstacle Art (時代ごとの障害物の絵)
+       ========================================================================== */
+    const OBSTACLE_ART = {
+      /* ---------- 原始の森 (猿) ---------- */
+      log(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#5b4227'; roundRectPath(x, y, w, h, 12); ctx.fill();
+        ctx.fillStyle = '#7a5c36'; roundRectPath(x + 4, y + 3, w - 8, h * 0.5, 10); ctx.fill();
+        ctx.fillStyle = '#3d2c1a';
+        ctx.beginPath(); ctx.ellipse(x + 10, y + h / 2, 8, h / 2 - 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#8a6a3e';
+        ctx.beginPath(); ctx.ellipse(x + 10, y + h / 2, 4, h / 2 - 9, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2e8b57';
+        ctx.fillRect(x + 22, y - 4, w - 34, 7);
+      },
+      snake(o) {
+        const { x, y, width: w, height: h } = o;
+        const wig = Math.sin(gameFrame * 0.18) * 4;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#0e6b52'; ctx.lineWidth = 15;
+        ctx.beginPath();
+        ctx.moveTo(x + 5, y + h - 5);
+        ctx.quadraticCurveTo(x + w * 0.32, y + wig, x + w * 0.56, y + h * 0.6);
+        ctx.quadraticCurveTo(x + w * 0.78, y + h + wig, x + w - 10, y + h * 0.35);
+        ctx.stroke();
+        ctx.strokeStyle = '#26e0a5'; ctx.lineWidth = 5; ctx.stroke();
+        ctx.fillStyle = '#0e6b52';
+        ctx.beginPath(); ctx.ellipse(x + w - 9, y + h * 0.32, 13, 10, -0.3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffeaa7'; ctx.fillRect(x + w - 13, y + h * 0.32 - 6, 5, 5);
+        ctx.strokeStyle = '#ff0844'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + w + 3, y + h * 0.34); ctx.lineTo(x + w + 14, y + h * 0.30);
+        ctx.stroke();
+      },
+      boar(o) {
+        const { x, y, width: w, height: h } = o;
+        const trot = Math.sin(gameFrame * 0.45) * 3;
+        ctx.fillStyle = '#4b3521';
+        ctx.fillRect(x + 12, y + h - 14 + trot, 8, 14);
+        ctx.fillRect(x + w - 24, y + h - 14 - trot, 8, 14);
+        ctx.fillStyle = '#6b4d2e';
+        ctx.beginPath(); ctx.ellipse(x + w * 0.55, y + h * 0.5, w * 0.36, h * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3d2c1a';
+        for (let i = 0; i < 6; i++) {
+          ctx.fillRect(x + 22 + i * 7, y + h * 0.14 - (i % 2) * 4, 3, 10);
+        }
+        ctx.fillStyle = '#6b4d2e';
+        ctx.beginPath(); ctx.ellipse(x + 16, y + h * 0.58, 16, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fffbe6';                              // 牙
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + h * 0.68); ctx.lineTo(x - 4, y + h * 0.48); ctx.lineTo(x + 8, y + h * 0.58);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff0844'; ctx.fillRect(x + 12, y + h * 0.46, 4, 4);
+      },
+      hive(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#c98f47';
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.quadraticCurveTo(x + w + 6, y + h * 0.45, x + w / 2, y + h);
+        ctx.quadraticCurveTo(x - 6, y + h * 0.45, x + w / 2, y);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(90,60,20,0.55)'; ctx.lineWidth = 2;
+        for (let i = 1; i < 4; i++) {
+          ctx.beginPath();
+          ctx.ellipse(x + w / 2, y + h * (i / 4), w * 0.5 * (1 - Math.abs(i / 4 - 0.5)) + 8, 4, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#2d3436';
+        ctx.beginPath(); ctx.ellipse(x + w / 2, y + h - 6, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f6d365';                              // 飛び回る蜂
+        for (let i = 0; i < 3; i++) {
+          const a = gameFrame * 0.11 + i * 2.1;
+          ctx.fillRect(x + w / 2 + Math.cos(a) * (18 + i * 5) - 2, y + h * 0.6 + Math.sin(a * 1.4) * 14 - 2, 4, 4);
+        }
+      },
+
+      /* ---------- サバンナ (原人) ---------- */
+      boulder(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(-o.spin);
+        ctx.fillStyle = '#8b5a2b';
+        ctx.beginPath();
+        for (let i = 0; i < 9; i++) {
+          const a = (i / 9) * Math.PI * 2;
+          const r = (w / 2) * (0.86 + ((i * 37) % 10) / 45);
+          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r * (h / w));
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.28)';
+        ctx.fillRect(-w * 0.28, -h * 0.18, w * 0.22, 7);
+        ctx.fillRect(-w * 0.05, h * 0.12, w * 0.3, 5);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(120,80,40,0.5)';                  // 巻き上げる土煙
+        for (let i = 0; i < 4; i++) {
+          const p = (gameFrame * 0.2 + i * 3) % 12;
+          ctx.fillRect(x + w + p * 3, y + h - 6 - p, 6 - p * 0.3, 4);
+        }
+      },
+      bonfire(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#4a3728';                               // 薪
+        ctx.fillRect(x + 6, y + h - 12, w - 12, 8);
+        ctx.fillRect(x + 12, y + h - 18, w - 30, 8);
+        const t = gameFrame * 0.25;
+        const flames = [['#ff0844', 1.0], ['#ff8c42', 0.72], ['#f6d365', 0.42]];
+        flames.forEach(([col, sc], k) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(x + w / 2, y + h - 14);
+          for (let i = 0; i <= 10; i++) {
+            const p = i / 10;
+            const sway = Math.sin(t + p * 4 + k) * (7 * p);
+            const rad = (w / 2 - 8) * sc * Math.sin(Math.PI * p) ;
+            ctx.lineTo(x + w / 2 + sway + rad * (i % 2 ? 1 : -1), y + h - 14 - p * (h - 16) * sc);
+          }
+          ctx.closePath(); ctx.fill();
+        });
+        ctx.fillStyle = '#ffeaa7';                               // 火の粉
+        for (let i = 0; i < 5; i++) {
+          const p = (gameFrame * 0.1 + i * 4) % 20;
+          ctx.globalAlpha = 1 - p / 20;
+          ctx.fillRect(x + w / 2 + Math.sin(i + p * 0.4) * 14, y + h - 20 - p * 2.4, 3, 3);
+        }
+        ctx.globalAlpha = 1;
+      },
+      bones(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#e8e2d0';
+        ctx.beginPath();                                         // 頭骨
+        ctx.ellipse(x + 20, y + h - 16, 18, 15, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(x + 30, y + h - 14, 14, 12);
+        ctx.fillStyle = '#3d3428';
+        ctx.beginPath(); ctx.ellipse(x + 15, y + h - 20, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e8e2d0';
+        for (let i = 0; i < 4; i++) {                            // 肋骨
+          const bx = x + 46 + i * 9;
+          ctx.save();
+          ctx.translate(bx, y + h);
+          ctx.rotate(-0.4 - i * 0.08);
+          ctx.fillRect(-3, -h + 4, 6, h - 4);
+          ctx.restore();
+        }
+        ctx.fillStyle = '#cfc7b2';
+        ctx.fillRect(x + 4, y + h - 5, w - 8, 5);
+      },
+      vulture(o) {
+        const { x, y, width: w, height: h } = o;
+        const flap = Math.sin(gameFrame * 0.32) * (h * 0.55);
+        ctx.fillStyle = '#2d3436';
+        ctx.beginPath();                                          // 翼
+        ctx.moveTo(x + w / 2, y + h / 2);
+        ctx.quadraticCurveTo(x + w * 0.2, y + h / 2 - flap, x - 6, y + h / 2 - flap * 0.4);
+        ctx.quadraticCurveTo(x + w * 0.25, y + h / 2 + 8, x + w / 2, y + h / 2 + 6);
+        ctx.moveTo(x + w / 2, y + h / 2);
+        ctx.quadraticCurveTo(x + w * 0.8, y + h / 2 - flap, x + w + 6, y + h / 2 - flap * 0.4);
+        ctx.quadraticCurveTo(x + w * 0.75, y + h / 2 + 8, x + w / 2, y + h / 2 + 6);
+        ctx.fill();
+        ctx.fillStyle = '#4a3f3a';
+        ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2 + 2, 15, 11, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d8b8a0';                                // 裸の首
+        ctx.fillRect(x + w / 2 - 14, y + h / 2 - 4, 10, 7);
+        ctx.fillStyle = '#f6d365';
+        ctx.beginPath();                                          // くちばし
+        ctx.moveTo(x + w / 2 - 14, y + h / 2 - 2);
+        ctx.lineTo(x + w / 2 - 26, y + h / 2 + 3);
+        ctx.lineTo(x + w / 2 - 13, y + h / 2 + 5);
+        ctx.closePath(); ctx.fill();
+      },
+
+      /* ---------- 氷河期 (狩猟民) ---------- */
+      mammoth(o) {
+        const { x, y, width: w, height: h } = o;
+        const step = Math.sin(gameFrame * 0.16) * 4;
+        ctx.fillStyle = '#5d4327';                                // 脚
+        ctx.fillRect(x + 22, y + h - 26 + step, 16, 26);
+        ctx.fillRect(x + w - 40, y + h - 26 - step, 16, 26);
+        ctx.fillStyle = '#7b5c3e';                                // 胴
+        roundRectPath(x + 12, y + h * 0.16, w - 26, h * 0.62, 26); ctx.fill();
+        ctx.fillStyle = '#916b46';                                // 毛並み
+        for (let i = 0; i < 9; i++) {
+          ctx.fillRect(x + 18 + i * 8, y + h * 0.2, 4, h * 0.5);
+        }
+        ctx.fillStyle = '#7b5c3e';                                // 頭
+        ctx.beginPath(); ctx.ellipse(x + 20, y + h * 0.42, 24, 22, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6b4d33';                                // 頭のこぶ
+        ctx.beginPath(); ctx.ellipse(x + 26, y + h * 0.2, 17, 12, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#7b5c3e'; ctx.lineWidth = 11; ctx.lineCap = 'round';
+        ctx.beginPath();                                          // 鼻
+        ctx.moveTo(x + 8, y + h * 0.46);
+        ctx.quadraticCurveTo(x - 16, y + h * 0.62, x - 4, y + h * 0.86);
+        ctx.stroke();
+        ctx.fillStyle = '#fff8e1';                                // 牙
+        [0, 12].forEach((d, i) => {
+          ctx.save();
+          ctx.translate(x + 6, y + h * 0.56 + d * 0.4);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(-28 - i * 4, 16, -34 - i * 4, -8 - i * 3);
+          ctx.quadraticCurveTo(-24 - i * 4, 10, 0, 7);
+          ctx.fill();
+          ctx.restore();
+        });
+        ctx.fillStyle = '#2d3436'; ctx.fillRect(x + 16, y + h * 0.34, 5, 5);
+      },
+      saber(o) {
+        const { x, y, width: w, height: h } = o;
+        const lunge = Math.sin(gameFrame * 0.28) * 4;
+        ctx.fillStyle = '#c98b34';                                // 脚
+        ctx.fillRect(x + 16, y + h - 16 + lunge, 10, 16);
+        ctx.fillRect(x + w - 26, y + h - 16 - lunge, 10, 16);
+        ctx.fillStyle = '#e8b04b';                                // 胴
+        roundRectPath(x + 8, y + h * 0.3, w - 16, h * 0.48, 16); ctx.fill();
+        ctx.fillStyle = '#a8752a';                                // 縞
+        for (let i = 0; i < 4; i++) ctx.fillRect(x + 26 + i * 12, y + h * 0.32, 5, h * 0.4);
+        ctx.strokeStyle = '#e8b04b'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.beginPath();                                          // 尾
+        ctx.moveTo(x + w - 10, y + h * 0.42);
+        ctx.quadraticCurveTo(x + w + 16, y + h * 0.2, x + w + 8, y + h * 0.02);
+        ctx.stroke();
+        ctx.fillStyle = '#e8b04b';                                // 頭
+        ctx.beginPath(); ctx.ellipse(x + 12, y + h * 0.42, 16, 14, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5d4327';                                // 耳
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + h * 0.26); ctx.lineTo(x + 2, y + h * 0.1); ctx.lineTo(x + 14, y + h * 0.24);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff8e1';                                // サーベル状の牙
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + h * 0.52); ctx.lineTo(x + 2, y + h * 0.86); ctx.lineTo(x + 11, y + h * 0.54);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x + 15, y + h * 0.52); ctx.lineTo(x + 12, y + h * 0.8); ctx.lineTo(x + 20, y + h * 0.54);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff0844'; ctx.fillRect(x + 10, y + h * 0.36, 5, 4);
+      },
+      crevasse(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#0b2233';                                // 底なしの闇
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x + w * 0.16, y + 4);
+        ctx.lineTo(x + w * 0.42, y + h * 0.5);
+        ctx.lineTo(x + w * 0.62, y + 2);
+        ctx.lineTo(x + w * 0.84, y + h * 0.55);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#cfe9f5';                                // 割れた氷の縁
+        ctx.beginPath();
+        ctx.moveTo(x - 6, y + h); ctx.lineTo(x + w * 0.18, y + 2);
+        ctx.lineTo(x + w * 0.22, y + 8); ctx.lineTo(x + 6, y + h);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x + w + 6, y + h); ctx.lineTo(x + w * 0.82, y + 2);
+        ctx.lineTo(x + w * 0.78, y + 8); ctx.lineTo(x + w - 6, y + h);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(116, 185, 255, 0.5)';               // 冷気
+        for (let i = 0; i < 5; i++) {
+          const p = (gameFrame * 0.08 + i * 4) % 20;
+          ctx.globalAlpha = 0.5 - p / 40;
+          ctx.fillRect(x + 14 + i * 16, y - p * 1.6, 4, 8);
+        }
+        ctx.globalAlpha = 1;
+      },
+      icefang(o) {
+        const { x, y, width: w, height: h } = o;
+        const grad = ctx.createLinearGradient(0, y, 0, y + h);
+        grad.addColorStop(0, '#dff4ff');
+        grad.addColorStop(1, 'rgba(116,185,255,0.75)');
+        ctx.fillStyle = grad;
+        [[0, 1.0], [0.42, 0.72], [0.74, 0.9]].forEach(([off, sc]) => {
+          const bx = x + off * w;
+          const bw = w * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(bx, y);
+          ctx.lineTo(bx + bw, y);
+          ctx.lineTo(bx + bw / 2, y + h * sc);
+          ctx.closePath(); ctx.fill();
+        });
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(x + 4, y + 4, 3, h * 0.55);
+      },
+      frozenlog(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#4b3a2c'; roundRectPath(x, y + 8, w, h - 8, 10); ctx.fill();
+        ctx.fillStyle = '#b8d8e8';                                 // 氷の殻
+        roundRectPath(x - 2, y, w + 4, h * 0.6, 10); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillRect(x + 6, y + 5, w - 24, 4);
+        ctx.fillStyle = '#dff4ff';                                 // 突き出た氷
+        for (let i = 0; i < 4; i++) {
+          const bx = x + 12 + i * (w - 26) / 3;
+          ctx.beginPath();
+          ctx.moveTo(bx - 6, y + 4); ctx.lineTo(bx, y - 16 - (i % 2) * 8); ctx.lineTo(bx + 6, y + 4);
+          ctx.closePath(); ctx.fill();
+        }
+      },
+
+      /* ---------- 現代都市 (現代人) ---------- */
+      barrier(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#b2bec3';
+        ctx.fillRect(x + 4, y + 16, 6, h - 16);
+        ctx.fillRect(x + w - 10, y + 16, 6, h - 16);
+        ctx.fillStyle = '#e17055';
+        ctx.fillRect(x, y, w, 18);
+        ctx.fillStyle = '#fff';
+        for (let i = 0; i < 4; i++) ctx.fillRect(x + 4 + i * 14, y, 7, 18);
+        ctx.fillStyle = '#f6d365';
+        ctx.fillRect(x + w / 2 - 5, y + h * 0.55, 10, 10);
+        if (Math.floor(gameFrame / 18) % 2 === 0) {
+          ctx.fillStyle = '#ff0844'; ctx.shadowColor = '#ff0844'; ctx.shadowBlur = 10;
+          ctx.fillRect(x + w / 2 - 4, y + h * 0.56, 8, 8);
+        }
+      },
+      taxi(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#f6c445';
+        roundRectPath(x, y + h * 0.34, w, h * 0.52, 8); ctx.fill();
+        roundRectPath(x + w * 0.22, y + 4, w * 0.5, h * 0.42, 8); ctx.fill();
+        ctx.fillStyle = '#2d3436';                                 // 窓
+        ctx.fillRect(x + w * 0.26, y + 9, w * 0.19, h * 0.26);
+        ctx.fillRect(x + w * 0.5, y + 9, w * 0.19, h * 0.26);
+        ctx.fillStyle = '#1e272e';                                 // タイヤ
+        ctx.beginPath(); ctx.arc(x + w * 0.24, y + h - 6, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + w * 0.78, y + h - 6, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.fillRect(x + w * 0.36, y - 8, w * 0.24, 10);
+        ctx.fillStyle = '#2d3436'; ctx.font = '9px DotGothic16, monospace';
+        ctx.fillText('TAXI', x + w * 0.38, y);
+        ctx.fillStyle = '#ff0844'; ctx.fillRect(x - 3, y + h * 0.5, 5, 8);
+      },
+      cones(o) {
+        const { x, y, width: w, height: h } = o;
+        for (let i = 0; i < 3; i++) {
+          const cx = x + 12 + i * (w - 22) / 2;
+          ctx.fillStyle = '#2d3436';
+          ctx.fillRect(cx - 13, y + h - 5, 26, 5);
+          ctx.fillStyle = '#ff7043';
+          ctx.beginPath();
+          ctx.moveTo(cx, y + (i === 1 ? -6 : 2));
+          ctx.lineTo(cx + 11, y + h - 5); ctx.lineTo(cx - 11, y + h - 5);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(cx - 7, y + h * 0.5, 14, 5);
+        }
+        ctx.strokeStyle = '#f6d365'; ctx.lineWidth = 2;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath(); ctx.moveTo(x + 2, y + h * 0.35); ctx.lineTo(x + w - 2, y + h * 0.35); ctx.stroke();
+        ctx.setLineDash([]);
+      },
+      signboard(o) {
+        const { x, y, width: w, height: h } = o;
+        const tilt = Math.sin(gameFrame * 0.06) * 0.05;
+        ctx.save();
+        ctx.translate(x + w / 2, y);
+        ctx.rotate(tilt);
+        ctx.fillStyle = '#2d3436'; ctx.fillRect(-w / 2 - 3, -3, w + 6, h + 6);
+        ctx.fillStyle = '#00b894'; ctx.fillRect(-w / 2, 0, w, h);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px DotGothic16, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('工事中', 0, h * 0.66);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.fillRect(-w / 2, 0, w, 6);
+        ctx.restore();
+      },
+
+      /* ---------- サイバー未来 (サイボーグ) ---------- */
+      laser_gate(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#2d3436';
+        ctx.fillRect(x, y, 10, h);
+        ctx.fillRect(x + w - 10, y, 10, h);
+        ctx.fillStyle = '#636e72';
+        ctx.fillRect(x - 4, y + h - 8, w + 8, 8);
+        const pulse = 0.55 + 0.45 * Math.sin(gameFrame * 0.22);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.shadowColor = '#e84393'; ctx.shadowBlur = 14;
+        for (let i = 0; i < 5; i++) {
+          const ly = y + 10 + i * (h - 20) / 4;
+          ctx.fillStyle = `rgba(232, 67, 147, ${0.55 + pulse * 0.4})`;
+          ctx.fillRect(x + 9, ly - 3, w - 18, 6);
+        }
+        ctx.restore();
+        ctx.fillStyle = '#ff0844';
+        ctx.fillRect(x + 2, y + 3, 6, 6);
+        ctx.fillRect(x + w - 8, y + 3, 6, 6);
+      },
+      drone(o) {
+        const { x, y, width: w, height: h } = o;
+        const rot = gameFrame * 0.9;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';                  // ホバー光
+        ctx.fillStyle = 'rgba(232,67,147,0.28)';
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.3, y + h);
+        ctx.lineTo(x + w * 0.7, y + h);
+        ctx.lineTo(x + w * 0.95, y + h + 34);
+        ctx.lineTo(x + w * 0.05, y + h + 34);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle = '#636e72'; ctx.lineWidth = 3;            // アーム
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + 6); ctx.lineTo(x + w - 6, y + h - 10);
+        ctx.moveTo(x + w - 6, y + 6); ctx.lineTo(x + 6, y + h - 10);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(0,242,254,0.8)'; ctx.lineWidth = 2; // ローター
+        [[x + 6, y + 6], [x + w - 6, y + 6]].forEach(([rx, ry]) => {
+          ctx.beginPath();
+          ctx.moveTo(rx - Math.cos(rot) * 11, ry - Math.sin(rot) * 4);
+          ctx.lineTo(rx + Math.cos(rot) * 11, ry + Math.sin(rot) * 4);
+          ctx.stroke();
+        });
+        ctx.fillStyle = '#2c2c54';                                  // 本体
+        roundRectPath(x + w * 0.18, y + h * 0.28, w * 0.64, h * 0.56, 7); ctx.fill();
+        ctx.fillStyle = '#e84393';
+        ctx.fillRect(x + w * 0.2, y + h * 0.3, w * 0.6, 4);
+        ctx.save();                                                 // 走査アイ
+        ctx.shadowColor = '#ff0844'; ctx.shadowBlur = 14;
+        ctx.fillStyle = '#ff0844';
+        ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.6, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      },
+      hovercar(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';                   // 推進炎
+        ctx.fillStyle = 'rgba(0,242,254,0.5)';
+        const jet = 26 + Math.sin(gameFrame * 0.5) * 10;
+        ctx.beginPath();
+        ctx.moveTo(x + w, y + h * 0.3); ctx.lineTo(x + w + jet, y + h * 0.5);
+        ctx.lineTo(x + w, y + h * 0.72); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#00cec9';                                  // 車体
+        ctx.beginPath();
+        ctx.moveTo(x, y + h * 0.6);
+        ctx.quadraticCurveTo(x + w * 0.16, y + h * 0.12, x + w * 0.55, y + h * 0.16);
+        ctx.lineTo(x + w * 0.9, y + h * 0.3);
+        ctx.quadraticCurveTo(x + w, y + h * 0.55, x + w * 0.86, y + h * 0.86);
+        ctx.lineTo(x + w * 0.12, y + h * 0.9);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(20,24,38,0.9)';                       // キャノピー
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.2, y + h * 0.44);
+        ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.18, x + w * 0.58, y + h * 0.26);
+        ctx.lineTo(x + w * 0.6, y + h * 0.5);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ff0844';                                  // 前照灯
+        ctx.shadowColor = '#ff0844'; ctx.shadowBlur = 12;
+        ctx.fillRect(x - 2, y + h * 0.52, 12, 6);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(0,242,254,0.35)';                     // 反重力の光
+        ctx.fillRect(x + w * 0.14, y + h * 0.92, w * 0.7, 5);
+      },
+      pillar(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#2c2c54';                                  // 基部と天井接続部
+        ctx.fillRect(x - 8, y + h - 12, w + 16, 12);
+        ctx.fillRect(x - 6, y - 8, w + 12, 12);
+        const grad = ctx.createLinearGradient(x, 0, x + w, 0);
+        grad.addColorStop(0, 'rgba(162,155,254,0.25)');
+        grad.addColorStop(0.5, 'rgba(232,67,147,0.95)');
+        grad.addColorStop(1, 'rgba(162,155,254,0.25)');
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';                    // 昇っていくエネルギー環
+        for (let i = 0; i < 4; i++) {
+          const ry = y + h - ((gameFrame * 3 + i * h / 4) % h);
+          ctx.globalAlpha = 0.5;
+          ctx.fillRect(x - 4, ry, w + 8, 4);
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#ff0844';
+        ctx.fillRect(x - 8, y + h - 16, w + 16, 4);
+      },
+      wall(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#1e3799';
+        roundRectPath(x, y, w, h, 6); ctx.fill();
+        ctx.strokeStyle = '#0984e3'; ctx.lineWidth = 3;
+        roundRectPath(x + 2, y + 2, w - 4, h - 4, 5); ctx.stroke();
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(0,242,254,${0.4 + 0.3 * Math.sin(gameFrame * 0.14)})`;
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 3; i++) {                               // 六角セル
+          for (let j = 0; j < 2; j++) {
+            const cx = x + 16 + j * 24, cy = y + 16 + i * 18;
+            ctx.beginPath();
+            for (let k = 0; k < 6; k++) {
+              const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+              ctx.lineTo(cx + Math.cos(a) * 9, cy + Math.sin(a) * 9);
+            }
+            ctx.closePath(); ctx.stroke();
+          }
+        }
+        ctx.restore();
+      },
+      ceiling(o) {
+        const { x, y, width: w, height: h } = o;
+        ctx.fillStyle = '#2c2c54';
+        ctx.fillRect(x, y, w, h * 0.4);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const grad = ctx.createLinearGradient(0, y, 0, y + h);
+        grad.addColorStop(0, 'rgba(253,121,168,0.85)');
+        grad.addColorStop(1, 'rgba(253,121,168,0.15)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+        ctx.fillStyle = '#fd79a8';                                  // 下向きの放電
+        for (let i = 0; i < 7; i++) {
+          const bx = x + 10 + i * (w - 20) / 6;
+          const len = h * 0.5 + Math.sin(gameFrame * 0.2 + i) * 8;
+          ctx.beginPath();
+          ctx.moveTo(bx - 5, y + h * 0.4);
+          ctx.lineTo(bx, y + h * 0.4 + len);
+          ctx.lineTo(bx + 5, y + h * 0.4);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = '#ff0844';
+        ctx.fillRect(x, y, w, 5);
+      }
+    };
+
+    function drawProjectiles() {
+      projectiles.forEach(p => {
+        ctx.save();
+        if (p.type === 'spear') {
+          // 槍
+          ctx.fillStyle = '#b33939';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+          ctx.fillStyle = '#dcdde1';
+          ctx.beginPath();
+          ctx.moveTo(p.x + p.width, p.y + p.height/2);
+          ctx.lineTo(p.x + p.width - 10, p.y - 4);
+          ctx.lineTo(p.x + p.width - 10, p.y + p.height + 4);
+          ctx.closePath();
+          ctx.fill();
+        } else if (p.type === 'laser') {
+          // ネオンメガビーム
+          ctx.fillStyle = '#ff0844';
+          ctx.shadowColor = '#ff0844';
+          ctx.shadowBlur = 15;
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(p.x, p.y + 4, p.width, p.height - 8);
+        } else if (p.type === 'pulse') {
+          // ドローンパルス
+          ctx.fillStyle = '#00f2fe';
+          ctx.shadowColor = '#00f2fe';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(p.x + p.width/2, p.y + p.height/2, p.width/2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+    }
+
+    /* ==========================================================================
+       Character Rendering (スプライト画像 ＆ プロシージャル・ピクセルフォールバック)
+       ========================================================================== */
+    /* アトラスから1コマ切り出して描く共通処理。
+       row = 進化段階, frame = ランサイクルのコマ番号 (0..9) */
+    function drawRunnerFrame(row, frame, dx, dy, dw, dh, lean) {
+      const sx = frame * SHEET.cellW;
+      const sy = row * SHEET.cellH;
+      if (lean) {
+        // 足元を軸に前傾させる
+        ctx.save();
+        ctx.translate(dx + dw * SHEET.bodyAnchorX, dy + dh);
+        ctx.rotate(lean);
+        ctx.drawImage(spriteImg, sx, sy, SHEET.cellW, SHEET.cellH,
+                      -dw * SHEET.bodyAnchorX, -dh, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(spriteImg, sx, sy, SHEET.cellW, SHEET.cellH, dx, dy, dw, dh);
+      }
+    }
+
+    /* 残像。古いものほど薄く、時代カラーに寄せて発光させる。 */
+    function drawAfterImages() {
+      if (!spriteLoaded || afterImages.length === 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      afterImages.forEach(a => {
+        ctx.globalAlpha = (a.life / a.maxLife) * 0.30;
+        drawRunnerFrame(a.row, a.frame, a.drawX, a.drawY, a.drawW, a.drawH, a.lean);
+      });
+      ctx.restore();
+    }
+
+    function drawPlayer(era) {
+      const g = playerDrawGeometry();
+
+      ctx.save();
+
+      // 無敵時の点滅
+      if (player.invulnerableTimer > 0 && Math.floor(player.invulnerableTimer / 4) % 2 === 0) {
+        ctx.globalAlpha = 0.35;
+      }
+
+      if (spriteLoaded) {
+        // ブースト中は色収差ぎみに前後へずらしたゴーストを重ねる
+        if (boosting) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.35;
+          ctx.filter = 'none';
+          drawRunnerFrame(era.spriteRow, player.animFrame, g.x - 7, g.y, g.w, g.h, player.leanAngle);
+          drawRunnerFrame(era.spriteRow, player.animFrame, g.x + 5, g.y, g.w, g.h, player.leanAngle);
+          ctx.restore();
+        }
+
+        // 攻撃時は少しだけ前のめりに踏み込む
+        const lean = player.leanAngle + (player.isAttacking ? 0.10 : 0);
+        drawRunnerFrame(era.spriteRow, player.animFrame, g.x, g.y, g.w, g.h, lean);
+      } else {
+        drawPixelPlayerProcedural(g.x, g.y, g.w, g.h, era);
+      }
+
+      // 近接攻撃時のスイングエフェクト
+      if (player.isAttacking && (era.weaponType === 'club' || era.weaponType === 'claw')) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#ff0844';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(player.x + player.width + 18, player.y + player.height / 2, 42,
+                -Math.PI / 3, Math.PI / 3);
+        ctx.stroke();
+      }
+
+      // サイボーグのネオンオーラ
+      if (currentEraIndex === 4) {
+        ctx.strokeStyle = '#00f2fe';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 12;
+        ctx.globalAlpha *= 0.6;
+        ctx.strokeRect(g.x + g.w * 0.28, g.y + 6, g.w * 0.34, g.h - 10);
+      }
+
+      ctx.restore();
+    }
+
+    // スプライト未読込時のフォールバック
+    function drawPixelPlayerProcedural(px, py, pw, ph, era) {
+      ctx.fillStyle = era.color;
+      ctx.fillRect(px + pw * 0.3, py + ph * 0.15, pw * 0.3, ph * 0.8);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(px + pw * 0.5, py + ph * 0.25, 6, 6);
+    }
+
+    function drawParticles() {
+      particles.forEach(pt => {
+        ctx.save();
+        ctx.fillStyle = pt.color;
+        ctx.globalAlpha = pt.life / pt.maxLife;
+        ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+        ctx.restore();
+      });
+    }
+
+    function drawFloatingTexts() {
+      floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.font = '14px DotGothic16, monospace';
+        ctx.fillStyle = ft.color;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.globalAlpha = ft.life / ft.maxLife;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      });
+    }
+
+    function drawCrtScanlines() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      for (let y = 0; y < canvas.height; y += 4) {
+        ctx.fillRect(0, y, canvas.width, 2);
+      }
+    }
+
+    /* ==========================================================================
+       Main Loop
+       ========================================================================== */
+    /* 固定タイムステップ。
+       生の requestAnimationFrame だと 144Hz モニタでゲームが 2.4倍速で進んでしまうため、
+       更新は必ず 60Hz 相当で回し、描画だけを画面のリフレッシュレートに任せる。 */
+    const FIXED_DT = 1000 / 60;
+    let lastTime = 0;
+    let accumulator = 0;
+
+    function gameLoop(now) {
+      requestAnimationFrame(gameLoop);
+
+      if (!lastTime) { lastTime = now; return; }
+      let delta = now - lastTime;
+      lastTime = now;
+      if (delta > 200) delta = FIXED_DT;   // タブ復帰時に一気に進むのを防ぐ
+
+      accumulator += delta;
+      let steps = 0;
+      while (accumulator >= FIXED_DT && steps < 5) {
+        updateGame();
+        accumulator -= FIXED_DT;
+        steps++;
+      }
+      if (steps >= 5) accumulator = 0;     // 追いつけない場合は捨てる
+
+      // タイトル / リザルト表示中もキャラは走り続ける (アトラクト表示)
+      if (gameState !== 'PLAYING') {
+        player.animTime += 0.35;
+        player.animFrame = Math.floor(player.animTime) % SHEET.cols;
+      }
+
+      render();
+    }
+
+    // イベントリスナーバインド
+    document.getElementById('btnStart').addEventListener('click', startGame);
+    document.getElementById('btnRestart').addEventListener('click', startGame);
+    document.getElementById('btnClearRestart').addEventListener('click', startGame);
+
+    // 初期表示 (進化図鑑・系統ツリー)
+    eraStats = ERAS.map(() => ({ reached: false, distance: 0, topSpeed: 0 }));
+    renderCodex();
+    renderEvoTrack(document.getElementById('evoTrack'));
+
+    // ループ開始
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
