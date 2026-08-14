@@ -2,7 +2,10 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0f111a">
   <title>人類進化ランナー 🧬 EVOLUTION RUNNER</title>
   <!-- Google Fonts: Press Start 2P & DotGothic16 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,6 +31,7 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
+      -webkit-tap-highlight-color: transparent;   /* タップ時の灰色フラッシュを消す */
     }
 
     body {
@@ -40,14 +44,17 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      min-height: 100dvh;     /* モバイルのアドレスバー伸縮で下端が切れるのを防ぐ */
       overflow: hidden;
       padding: 10px;
     }
 
+    /* 画面に収まる最大サイズを「幅」と「高さ」の両方から決める。
+       幅だけで決めると、横向きスマホでコンテナが画面より縦に大きくなり
+       スタートボタンが画面外に出てしまう。 */
     #game-container {
       position: relative;
-      width: 100%;
-      max-width: 900px;
+      width: min(900px, 100%, calc((100dvh - 60px) * 16 / 9));
       aspect-ratio: 16 / 9;
       background: #000;
       border: 4px solid #303e5c;
@@ -335,6 +342,9 @@
 
     /* opacity だけだと非表示中も要素が残り、他のオーバーレイと重なって
        うっすら透けることがあるため、フェード後に visibility も落とす */
+    /* 同じ理由で、オーバーレイの子要素も画面幅を超えないようにする */
+    .screen-overlay > * { max-width: 100%; }
+
     .screen-overlay.hidden {
       opacity: 0;
       pointer-events: none;
@@ -671,6 +681,227 @@
       color: #718096;
       text-align: center;
     }
+
+    /* ==========================================================================
+       Mobile Optimization
+       ==========================================================================
+       このゲームは横スクロールランナーで、横方向の見通し＝反応時間そのもの。
+       縦持ちでは 16:9 が極端に小さくなり成立しないため、
+       ・横持ち → 画面いっぱいまで拡大
+       ・縦持ち → 回転を促し、ゲームは一時停止
+       という方針にしている。 */
+
+    /* --- 横持ちスマホ: 余白を捨てて表示領域を最大化 --- */
+    @media (pointer: coarse) and (orientation: landscape) {
+      body { padding: 0; }
+
+      #game-container {
+        width: min(100vw, calc(100dvh * 16 / 9));
+        border-width: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .footer-info { display: none; }
+    }
+
+    /* --- 縦持ち: 回転を促す --- */
+    .rotate-hint {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #05070f;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .rotate-icon {
+      font-size: 60px;
+      animation: rotate-tilt 1.6s ease-in-out infinite;
+    }
+
+    @keyframes rotate-tilt {
+      0%, 40%  { transform: rotate(0deg); }
+      70%, 100% { transform: rotate(-90deg); }
+    }
+
+    /* flex の align-items:center は子を max-content 幅にするため、
+       長い一行が折り返さずにはみ出す。明示的に上限を与えて折り返させる。 */
+    .rotate-hint > * { max-width: 100%; }
+
+    .rotate-title {
+      font-size: clamp(15px, 4.6vw, 20px);
+      font-weight: bold;
+      color: var(--accent-neon);
+      text-shadow: 0 0 12px rgba(0, 242, 254, 0.7);
+    }
+
+    .rotate-sub {
+      font-size: clamp(11px, 3.2vw, 13px);
+      color: #a0aec0;
+      line-height: 1.7;
+    }
+
+    @media (pointer: coarse) and (orientation: portrait) {
+      .rotate-hint { display: flex; }
+    }
+
+    /* --- 小さい画面ではHUDを縮める（速度パネルが画面幅の3分の1を占めないように） --- */
+    @media (max-width: 820px) {
+      .hud { padding: 6px 8px; }
+      .hud-left, .hud-right { gap: 4px; }
+
+      .badge {
+        font-size: 10px;
+        padding: 3px 7px;
+        gap: 4px;
+        border-radius: 6px;
+        border-width: 1px;
+      }
+
+      .era-badge { font-size: 11px; }
+
+      .speed-panel, .boost-gauge-container {
+        width: 148px;
+        padding: 3px 7px 4px;
+        border-width: 1px;
+      }
+
+      #speed-value { font-size: 15px; }
+      .speed-unit { font-size: 8px; }
+      .speed-track { height: 6px; margin-top: 3px; }
+      .speed-hint { font-size: 8px; margin-top: 2px; }
+      .boost-gauge-label { font-size: 8px; margin-bottom: 2px; }
+      .boost-gauge-bar { height: 7px; }
+
+      .evo-track { padding: 2px 6px; gap: 2px; border-width: 1px; }
+      .evo-node { font-size: 12px; }
+      .evo-link { width: 6px; }
+
+      .combo-count { font-size: 22px; }
+      .combo-caption { font-size: 10px; }
+      .combo-pop { right: 14px; }
+    }
+
+    /* --- 縦が短い画面（横持ちスマホ）ではオーバーレイの中身を圧縮 --- */
+    @media (max-height: 520px) {
+      .screen-overlay { padding: 8px 12px; }
+      .game-title { font-size: 15px; margin-bottom: 3px; }
+      .game-subtitle { font-size: 11px; margin-bottom: 6px; }
+      .panel-columns { gap: 8px; margin-bottom: 8px; max-width: 660px; }
+      .tips-box { font-size: 10px; line-height: 1.4; padding: 6px 9px; }
+      .codex { padding: 7px 10px; }
+      .codex-title { font-size: 10px; margin-bottom: 5px; }
+      .codex-list { gap: 4px; margin-bottom: 5px; }
+      .codex-chip { min-width: 44px; font-size: 8px; padding: 3px 5px; border-width: 1px; }
+      .codex-chip span:first-child { font-size: 15px; }
+      .codex-best { font-size: 9px; }
+      .btn-main { font-size: 15px; padding: 8px 26px; border-width: 2px; }
+      .panel-heading { font-size: 9px; }
+      .journey-row { font-size: 9px; padding: 3px 7px; }
+      .journey-icon { font-size: 12px; }
+      .journey-name { width: 48px; }
+      .journey-val { font-size: 8px; }
+      .record-flash { font-size: 10px; line-height: 1.45; margin-bottom: 6px; }
+      .stats-box { font-size: 10px; line-height: 1.55; padding: 7px 11px; border-width: 1px; }
+      .evo-cutin-inner { padding: 10px 22px; }
+      .evo-cutin-step { font-size: 8px; margin-bottom: 4px; }
+      .evo-cutin-icon { font-size: 30px; }
+      .evo-cutin-title { font-size: 16px; }
+      .evo-cutin-name { font-size: 11px; margin-bottom: 6px; }
+      .evo-cutin-unlock { font-size: 10px; line-height: 1.5; padding: 4px 10px; margin-bottom: 6px; }
+      .evolution-banner { font-size: 17px; padding: 10px; }
+    }
+
+    /* --- さらに縦が短い画面（横持ちスマホの実測値は 300〜390px しかない） ---
+       ここでは「スタートボタンが必ず見えていること」を最優先にする。
+       説明文は読めなくてもゲームは始められるが、ボタンが画面外だと詰む。 */
+    @media (max-height: 440px) {
+      .game-title { font-size: 13px; margin-bottom: 2px; }
+      .game-title span { font-size: 11px !important; }
+      .game-subtitle { display: none; }
+
+      /* 説明は箱の中だけスクロールさせ、ボタンを押し出さない */
+      .tips-box {
+        max-height: 118px;
+        overflow-y: auto;
+        touch-action: pan-y;
+        font-size: 9px;
+        line-height: 1.35;
+      }
+
+      .panel-columns { margin-bottom: 6px; }
+      .btn-main { font-size: 14px; padding: 6px 22px; margin-top: 2px; }
+      .touch-guides { font-size: 9px; margin-top: 4px; }
+      .codex-chip { min-width: 40px; }
+      .codex-chip span:first-child { font-size: 13px; }
+
+      /* リザルトも同様に、ボタンを最優先で残す */
+      /* 5時代ぶんの記録と記録更新の全文が切れずに入る高さ
+         (クリアの達成感そのものなので、ここは削らない) */
+      .journey { max-height: 134px; overflow-y: auto; touch-action: pan-y; }
+      .record-flash { max-height: 72px; overflow-y: auto; touch-action: pan-y; }
+      #gameOverScreen h2, #clearScreen h2 { font-size: 17px !important; margin-bottom: 2px !important; }
+      #gameOverMsg, #clearScreen > p { font-size: 10px !important; margin-bottom: 5px !important; }
+
+      .evo-cutin-inner { padding: 7px 18px; }
+      .evo-cutin-icon { font-size: 24px; }
+      .evo-cutin-title { font-size: 14px; }
+      .evo-cutin-unlock { font-size: 9px; padding: 3px 8px; }
+    }
+
+    /* --- タッチ操作ボタン --- */
+    /* マウスがある環境では邪魔なだけなので隠す */
+    @media (hover: hover) and (pointer: fine) {
+      .touch-controls { display: none; }
+    }
+
+    /* ノッチ・ホームバーを避ける */
+    .touch-controls {
+      bottom: max(12px, env(safe-area-inset-bottom));
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+    }
+
+    @media (max-height: 520px) {
+      .touch-btn { width: 58px; height: 58px; font-size: 12px; border-width: 2px; }
+      .touch-btn span { font-size: 8px; margin-top: 1px; }
+      .touch-controls { bottom: max(8px, env(safe-area-inset-bottom)); }
+    }
+
+    /* ノッチのある端末でHUDが隠れないように */
+    @media (pointer: coarse) and (orientation: landscape) {
+      .hud {
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+      }
+    }
+
+    /* オーバーレイだけは縦スクロールを許可する
+       (全要素に touch-action:none を掛けているため個別に戻す) */
+    .screen-overlay {
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* キーボード説明はタッチ端末では無意味なので差し替える */
+    .touch-guides {
+      display: none;
+      margin-top: 8px;
+      font-size: 11px;
+      color: #a0aec0;
+      line-height: 1.7;
+    }
+
+    @media (pointer: coarse) {
+      .key-guides { display: none; }
+      .touch-guides { display: block; }
+    }
   </style>
 </head>
 <body>
@@ -798,6 +1029,10 @@
         <div><span class="key-pill">X</span>/<span class="key-pill">↓</span> 攻撃</div>
         <div><span class="key-pill">SHIFT</span> ブースト</div>
       </div>
+
+      <div class="touch-guides">
+        画面のどこをタップしてもジャンプ ／ ⚡ ブースト ／ ⚔️ 攻撃
+      </div>
     </div>
 
     <!-- ゲームオーバー画面 -->
@@ -847,6 +1082,16 @@
         </div>
       </div>
       <button class="btn-main" id="btnClearRestart">さらなる高みへ挑戦</button>
+    </div>
+  </div>
+
+  <!-- 縦持ち時の回転案内 (横スクロールランナーは横画面でないと成立しないため) -->
+  <div class="rotate-hint" id="rotateHint">
+    <div class="rotate-icon">📱</div>
+    <div class="rotate-title">端末を横向きにしてください</div>
+    <div class="rotate-sub">
+      人類進化ランナーは横画面専用です。<br>
+      横に広い視界がないと、迫る障害物に反応できません。
     </div>
   </div>
 
@@ -1668,6 +1913,32 @@
     btnBoost.addEventListener('mousedown', (e) => { e.preventDefault(); setBoost(true); });
     window.addEventListener('mouseup', () => setBoost(false));
 
+    /* 画面のどこをタップしてもジャンプ。
+       ランナーで最も頻度の高い操作を、小さなボタンに当てさせないための導線。
+       ボタンはキャンバスの兄弟要素なので、ここには伝播してこない。 */
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleJump();
+    }, { passive: false });
+
+    /* 縦持ちのあいだはワールドを止める。
+       回転案内で画面が覆われている裏で被弾・退化が進むのを防ぐ。 */
+    const portraitQuery = window.matchMedia('(pointer: coarse) and (orientation: portrait)');
+    let rotateBlocked = portraitQuery.matches;
+
+    function syncRotateBlock() {
+      rotateBlocked = portraitQuery.matches;
+      if (rotateBlocked) {
+        setBoost(false);
+        audio.stopEngine();   // 再開時は setEngine が毎フレーム鳴らし直す
+      }
+    }
+    if (portraitQuery.addEventListener) {
+      portraitQuery.addEventListener('change', syncRotateBlock);
+    } else if (portraitQuery.addListener) {
+      portraitQuery.addListener(syncRotateBlock);   // 旧 Safari 用
+    }
+
     /* ==========================================================================
        Game Lifecycle: Start, Reset, Evolve, Game Over
        ========================================================================== */
@@ -2173,6 +2444,7 @@
        ========================================================================== */
     function updateGame() {
       if (gameState !== 'PLAYING') return;
+      if (rotateBlocked) return;        // 縦持ち中は一時停止
 
       // ヒットストップ: 衝突・破壊の瞬間だけ world を止めて打撃感を出す
       if (hitStop > 0) {
