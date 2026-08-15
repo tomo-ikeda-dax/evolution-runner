@@ -209,6 +209,10 @@
     <div class="title-screen" id="titleScreen">
       <h1>人類進化のあゆみ</h1>
       <p>原人から現代人まで、<br>人類がたどった道を体験します。</p>
+      <p style="font-size:11px; border-top:1px solid var(--line); padding-top:10px;">
+        時代の順に進みますが、これは<b>階段ではありません</b>。<br>
+        ネアンデルタール人とホモ・サピエンスは、<br>同じ時代に生きた<b>別の系統</b>です。
+      </p>
       <div class="wip">
         制作中の土台です。<br>
         現在、掲載する事実を一次資料で裏取りしています。<br>
@@ -254,7 +258,38 @@
           ]
         }
       },
-      { id: 'neander', name: '旧人', sub: 'ネアンデルタール人', when: '調査中', scene: 'ice',   interaction: 'pending', pending: true },
+      {
+        id: 'neander',
+        name: '旧人',
+        sub: 'ネアンデルタール人',
+        when: '約40万〜4万年前',
+        scene: 'ice',
+        interaction: 'dig',
+        prompt: '氷河期の洞窟。地面の下に何かが埋もれている。<em>指で土を払え</em>。',
+        card: {
+          certain: [
+            '⚠️ <b>ネアンデルタール人が進化してホモ・サピエンスになったのではない。</b>ネアンデルタール人は約40万年前から約4万年前まで、ホモ・サピエンスは約30万年前から現在まで。<b>両者は同じ時代に、別々に暮らしていた</b>。共通の祖先から枝分かれした<b>別の系統</b>である。',
+            'イスラエルのケバラ洞窟で見つかった<b>約6万年前</b>の遺体は、もっとも確実な埋葬の例のひとつとされる。掘られた穴があり、骨が関節でつながったまま残っていた。とくに、外れやすく普通は失われる<b>舌骨</b>まで元の位置にあった。遺体が速やかに埋められた何よりの証拠である。',
+            'この年代は、焼けた石器の熱ルミネッセンス法と、歯の電子スピン共鳴法という<b>2つの独立した方法</b>が一致して示している。',
+            'スペインのシマ・デ・ロス・ウエソスから出た約43万年前の人骨は、核DNAの解析によってネアンデルタール人につながる系統だと確認された。'
+          ],
+          debated: [
+            'フランスのラ・シャペル・オー・サンの遺体が意図的に埋葬されたものかは、<b>2014年・2015年・2016年と反論の応酬が続いており決着していない</b>。くぼみが人の手で掘られたのか自然にできたのかで意見が割れている。',
+            'シマ・デ・ロス・ウエソスには28体分もの人骨が集まっているが、<b>墓穴はなく、13メートルの縦穴の底</b>にある。遺体を運び込んだ可能性は残るものの、「埋葬」と呼べるかについては否定的な見方が強い。'
+          ],
+          updated: [
+            'イラクのシャニダール洞窟の「<b>花の埋葬</b>」は長く有名だった。遺体のまわりの花粉から、仲間が花を手向けたと考えられていたのである。だが2023年、その花粉は<b>巣を作るハナバチが運び込んだ</b>可能性が高いと示された。',
+            'ただし注意が必要である。花を否定したのは<b>シャニダールを掘っている当の研究チーム自身</b>で、同じ論文のなかで「遺体が意図的に安置されたこと自体」は今も支持している。<b>花は消えたが、埋葬まで消えたわけではない。</b>'
+          ],
+          src: [
+            'Valladas et al. (1987) Nature 330: 159–160 / Schwarcz et al. (1989) J. Archaeol. Sci. 16: 653–659 — ケバラの年代',
+            'Bar-Yosef et al. (1992) Current Anthropology 33(5): 497–550 — ケバラの埋葬',
+            'Meyer et al. (2016) Nature 531: 504–507 — シマ・デ・ロス・ウエソスの核DNA',
+            'Rendu et al. (2014) PNAS 111: 81–86 / Dibble et al. (2015) J. Archaeol. Sci. 53: 649–657 / Rendu et al. (2016) 同 69: 12–20 — ラ・シャペル論争',
+            'Hunt et al. (2023) J. Archaeol. Sci. 159: 105822 — シャニダールの花粉の再検討'
+          ]
+        }
+      },
       {
         id: 'sapiens',
         name: '新人',
@@ -342,6 +377,7 @@
 
       if (c.interaction === 'fire') startFire();
       if (c.interaction === 'trace') startTrace();
+      if (c.interaction === 'dig') startDig();
     }
 
     function finishInteraction() {
@@ -429,7 +465,111 @@
     }
 
     /* ==========================================================================
-       体験2: 線を引く（新人）
+       体験2: 土を払う（旧人）
+       ==========================================================================
+       「弔う」を体験させるのではなく「発掘する」を体験させている。
+       ネアンデルタール人が意図的に埋葬したかは今も論争中であり、
+       埋葬を確定事項として演出すると誤った理解を与えるため。
+       掘り出したうえで「これは埋葬か、自然にそうなったのか」を考えさせる。 */
+    const dig = { cells: [], cols: 12, rows: 9, cleared: 0, total: 0 };
+
+    function startDig() {
+      dig.cells = [];
+      for (let r = 0; r < dig.rows; r++)
+        for (let c = 0; c < dig.cols; c++)
+          dig.cells.push({ c, r, on: true });
+      dig.total = dig.cells.length;
+      dig.cleared = 0;
+      el('gaugeWrap').classList.add('show');
+      el('gaugeName').textContent = '掘り出した範囲';
+      updateDigGauge();
+    }
+
+    function digArea() {
+      return { x: W * 0.08, y: H * 0.30, w: W * 0.84, h: H * 0.34 };
+    }
+
+    function digAt(px, py) {
+      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'dig') return;
+      const a = digArea();
+      const cw = a.w / dig.cols, ch = a.h / dig.rows;
+      const R = Math.max(24, W * 0.075);
+      let changed = false;
+      dig.cells.forEach(cell => {
+        if (!cell.on) return;
+        const x = a.x + cell.c * cw + cw / 2;
+        const y = a.y + cell.r * ch + ch / 2;
+        if (Math.hypot(px - x, py - y) < R) { cell.on = false; changed = true; }
+      });
+      if (!changed) return;
+      dig.cleared = dig.cells.filter(c => !c.on).length;
+      updateDigGauge();
+      if (dig.cleared / dig.total >= 0.86) setTimeout(finishInteraction, 700);
+    }
+
+    function updateDigGauge() {
+      const pct = Math.round(dig.cleared / dig.total * 100);
+      el('gaugeVal').textContent = pct + '%';
+      el('gaugeFill').style.width = pct + '%';
+    }
+
+    function drawDig() {
+      const a = digArea();
+
+      ctx.save();                                    // 掘り出される遺体（屈葬の姿勢）
+      ctx.translate(a.x + a.w * 0.5, a.y + a.h * 0.55);
+      ctx.fillStyle = '#e6e0d0';
+      ctx.beginPath(); ctx.arc(-a.w * 0.26, -a.h * 0.10, a.w * 0.062, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3d3a32';                     // 眼窩
+      ctx.beginPath(); ctx.arc(-a.w * 0.28, -a.h * 0.12, a.w * 0.017, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#e6e0d0'; ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(5, a.w * 0.026);      // 背骨
+      ctx.beginPath();
+      ctx.moveTo(-a.w * 0.19, -a.h * 0.05);
+      ctx.quadraticCurveTo(0, a.h * 0.02, a.w * 0.17, -a.h * 0.02);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(3, a.w * 0.014);      // 肋骨
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4, x = -a.w * 0.15 + t * a.w * 0.26;
+        ctx.beginPath();
+        ctx.moveTo(x, -a.h * 0.05);
+        ctx.quadraticCurveTo(x + a.w * 0.02, a.h * 0.10, x - a.w * 0.02, a.h * 0.16);
+        ctx.stroke();
+      }
+      ctx.lineWidth = Math.max(5, a.w * 0.024);      // 折りたたまれた脚
+      ctx.beginPath();
+      ctx.moveTo(a.w * 0.16, -a.h * 0.02);
+      ctx.lineTo(a.w * 0.30, a.h * 0.16);
+      ctx.lineTo(a.w * 0.10, a.h * 0.26);
+      ctx.stroke();
+      ctx.beginPath();                               // 胸の上で組まれた腕
+      ctx.moveTo(-a.w * 0.14, -a.h * 0.01);
+      ctx.lineTo(-a.w * 0.02, a.h * 0.12);
+      ctx.lineTo(-a.w * 0.16, a.h * 0.16);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();                                    // 墓穴らしき輪郭
+      ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+      ctx.setLineDash([7, 6]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(a.x + a.w / 2, a.y + a.h * 0.55, a.w * 0.44, a.h * 0.42, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      const cw = a.w / dig.cols, ch = a.h / dig.rows;   // 残っている土
+      dig.cells.forEach(cell => {
+        if (!cell.on) return;
+        const x = a.x + cell.c * cw, y = a.y + cell.r * ch;
+        const shade = 30 + ((cell.c * 7 + cell.r * 13) % 5) * 6;
+        ctx.fillStyle = `rgb(${shade + 32},${shade + 22},${shade + 12})`;
+        ctx.fillRect(x - 0.5, y - 0.5, cw + 1, ch + 1);
+      });
+    }
+
+    /* ==========================================================================
+       体験3: 線を引く（新人）
        ==========================================================================
        ブロンボス洞窟で見つかった約7万3千年前の石片には、表面を磨いたうえで
        オーカーのクレヨンで格子模様が描かれていた。その行為をなぞる。
@@ -564,6 +704,7 @@
 
       if (c.interaction === 'fire') drawFire(groundY);
       if (c.interaction === 'trace') drawTrace();
+      if (c.interaction === 'dig') drawDig();
     }
 
     function drawFire(groundY) {
@@ -619,16 +760,21 @@
       if (!c) return;
       e.preventDefault();
       if (c.interaction === 'fire') addFuel();
-      if (c.interaction === 'trace') { dragging = true; const p = localPos(e); traceAt(p.x, p.y); }
+      if (c.interaction === 'trace' || c.interaction === 'dig') {
+        dragging = true;
+        const p = localPos(e);
+        if (c.interaction === 'trace') traceAt(p.x, p.y); else digAt(p.x, p.y);
+      }
     }
 
     function onMove(e) {
       if (!dragging || state !== 'play') return;
       const c = CHAPTERS[chapterIndex];
-      if (!c || c.interaction !== 'trace') return;
+      if (!c) return;
+      if (c.interaction !== 'trace' && c.interaction !== 'dig') return;
       e.preventDefault();
       const p = localPos(e);
-      traceAt(p.x, p.y);
+      if (c.interaction === 'trace') traceAt(p.x, p.y); else digAt(p.x, p.y);
     }
 
     function onUp() { dragging = false; }
