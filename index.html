@@ -36,25 +36,48 @@
       -webkit-user-select: none;
     }
 
-    /* 縦画面が主。横長の画面では 9:16 の枠に収める */
-    #stage {
-      position: relative;
-      width: min(100vw, calc(100dvh * 9 / 16));
-      height: min(100dvh, calc(100vw * 16 / 9));
+    /* 絵はウィンドウ全面に描く。
+       9:16 の枠に閉じこめていたころ、横長のPCでは画面の3割しか使えず、
+       残り7割が黒帯だった。絵を端まで広げると森も火あかりも画面いっぱいに届く。 */
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
       background: var(--bg);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
       touch-action: none;
     }
 
-    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    /* 縦画面が主。横長の画面では 9:16 の枠に収める。
+       これは「絵の枠」ではなく「文字と操作の枠」。中身は絵を透かす。 */
+    #stage {
+      position: relative;
+      z-index: 1;
+      width: min(100vw, calc(100dvh * 9 / 16));
+      height: min(100dvh, calc(100vw * 16 / 9));
+      display: flex;
+      flex-direction: column;
+      touch-action: none;
+      /* 枠そのものは操作を受けない。受けてしまうと、まん中をタップしても
+         背後のキャンバスに届かず、火に薪をくべられなくなる */
+      pointer-events: none;
+    }
+
+    .panel, .card-screen, .title-screen { pointer-events: auto; }
+
+    /* 上帯と下パネルは、文字を帯の中に置いたまま、背景の膜だけ画面の端まで伸ばす。
+       伸ばさないと、横長の画面で帯の幅にぴったり切れた「黒い箱」が
+       絵の上に浮いて見える。左右へ 50vw ずつはみ出させ、
+       同じぶんを内側の余白で戻している。 */
+    .topbar, .panel { margin-left: -50vw; margin-right: -50vw; }
 
     /* ---- 上部: 章インジケータと時代表示 ---- */
     .topbar {
       position: relative;
       z-index: 2;
-      padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+      padding: max(10px, env(safe-area-inset-top)) calc(50vw + 14px) 8px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -74,7 +97,7 @@
     .dot.done { background: var(--muted); }
     .dot.now  { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 
-    .era-line { display: flex; align-items: baseline; gap: 8px; }
+    .era-line { display: flex; align-items: baseline; gap: 8px; text-shadow: 0 1px 4px rgba(0,0,0,0.95); }
     .era-name { font-size: 17px; font-weight: bold; }
     .era-sub  { font-size: 10px; color: var(--muted); }
     .era-when { margin-left: auto; font-size: 11px; color: var(--accent); }
@@ -84,19 +107,37 @@
       position: relative;
       z-index: 2;
       margin-top: auto;
-      padding: 14px 14px max(16px, env(safe-area-inset-bottom));
-      background: linear-gradient(0deg, rgba(5,7,13,0.96) 70%, rgba(5,7,13,0));
+      padding: 14px calc(50vw + 14px) max(16px, env(safe-area-inset-bottom));
+      /* 以前は 70% の高さまで不透明で、画面の下2割が絵として死んでいた。
+         下端だけの薄い膜に変え、火あかりが文字の裏まで届くようにする。
+         読みやすさは背景ではなく text-shadow で担保する。 */
+      background: linear-gradient(0deg, rgba(5,7,13,0.88), rgba(5,7,13,0.52) 46%, rgba(5,7,13,0));
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    .prompt { font-size: 14px; line-height: 1.6; min-height: 44px; }
+    .prompt { font-size: 14px; line-height: 1.6; min-height: 44px; text-shadow: 0 1px 4px rgba(0,0,0,0.95); }
     .prompt em { color: var(--accent); font-style: normal; font-weight: bold; }
+
+    /* 体験中は、さらに薄くして火と植物に場所をゆずる。
+       スキップは主役の操作ではないので、オレンジの大ボタンをやめて隅に小さく置く。 */
+    .panel.lean { padding-top: 8px; gap: 7px; }
+    .panel.lean .prompt { font-size: 13px; min-height: 36px; }
+    .panel.lean .gauge { height: 6px; }
+    .panel.lean .btn {
+      width: auto;
+      align-self: flex-end;
+      padding: 7px 16px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.09);
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
 
     .gauge-wrap { display: none; flex-direction: column; gap: 4px; }
     .gauge-wrap.show { display: flex; }
-    .gauge-label { font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; }
+    .gauge-label { font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
     .gauge { height: 8px; background: #1a2032; border-radius: 4px; overflow: hidden; }
     .gauge-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4d1c, #f6d365); transition: width 0.12s linear; }
     .gauge-fill.low { background: #64748b; }
@@ -122,7 +163,7 @@
       position: absolute;
       inset: 0;
       z-index: 5;
-      background: rgba(5, 7, 13, 0.97);
+      background: rgba(5, 7, 13, 0.93);
       padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
       display: flex;
       flex-direction: column;
@@ -158,7 +199,9 @@
     /* ---- タイトル画面 ---- */
     .title-screen {
       position: absolute; inset: 0; z-index: 8;
-      background: #05070d;
+      /* 真っ黒で塞がず、後ろの森をうっすら見せる。
+         横長の画面では、帯だけ黒く塗ると絵の中に箱が浮いて見えるため */
+      background: rgba(5, 7, 13, 0.86);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 14px; padding: 24px; text-align: center;
       transition: opacity 0.4s, visibility 0s linear 0.4s;
@@ -173,9 +216,10 @@
   </style>
 </head>
 <body>
-  <div id="stage">
-    <canvas id="scene"></canvas>
+  <!-- 絵はウィンドウ全面に描くので、stage（文字と操作の枠）の外に置く -->
+  <canvas id="scene"></canvas>
 
+  <div id="stage">
     <div class="topbar">
       <div class="dots" id="dots"></div>
       <div class="era-line">
@@ -185,10 +229,10 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="panel">
       <div class="prompt" id="prompt"></div>
       <div class="gauge-wrap" id="gaugeWrap">
-        <div class="gauge-label"><span id="gaugeName">火の勢い</span><span id="gaugeVal">100%</span></div>
+        <div class="gauge-label"><span id="gaugeName">火のいきおい</span><span id="gaugeVal">100%</span></div>
         <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
       </div>
       <button class="btn" id="mainBtn">つぎへ</button>
@@ -219,797 +263,22 @@
     <!-- タイトル -->
     <div class="title-screen" id="titleScreen">
       <h1>人類進化のあゆみ</h1>
-      <p>原人から現代人まで、<br>人類がたどった道を体験します。</p>
+      <p>原人から今のわたしたちまで、<br>人類が歩いてきた道を たいけんします。</p>
       <p style="font-size:11px; border-top:1px solid var(--line); padding-top:10px;">
-        時代の順に進みますが、これは<b>階段ではありません</b>。<br>
-        ネアンデルタール人とホモ・サピエンスは、<br>同じ時代に生きた<b>別の系統</b>です。
+        時代の順にすすみますが、これは<b>階段ではありません</b>。<br>
+        ネアンデルタール人とホモ・サピエンスは、<br>同じ時代に生きていた<b>べつのなかま</b>です。
       </p>
-      <div class="wip">
-        制作中の土台です。<br>
-        現在、掲載する事実を一次資料で裏取りしています。<br>
-        本文と数値は確定後に差し替わります。
+      <div class="wip" style="color:var(--muted); border-color:var(--line); text-align:left;">
+        お話は、3つの色に分けて書いてあります。<br>
+        <b style="color:var(--certain)">みどり</b>… たしかなこと<br>
+        <b style="color:var(--debated)">きいろ</b>… まだわかっていないこと<br>
+        <b style="color:var(--updated)">あお</b>… むかしと変わったこと
       </div>
       <button class="btn" id="startBtn" style="max-width:240px;">はじめる</button>
       <a href="wide/" style="font-size:11px;color:var(--muted);">横画面のアクションゲーム版はこちら →</a>
     </div>
   </div>
 
-  <script>
-    /* ==========================================================================
-       章データ
-       ==========================================================================
-       facts は3段構成:
-         certain … 研究者の間で争いがない、断定してよいこと
-         debated … 今も議論が続いていて、断定してはいけないこと
-         updated … かつて教わったが、その後書き換わったこと
-       出典は src に明記する。裏取りが済んでいない章は pending: true。 */
-    const CHAPTERS = [
-      {
-        id: 'erectus',
-        name: '原人',
-        sub: 'ホモ・エレクトス',
-        when: '約200万〜10万年前',
-        scene: 'forest',
-        interaction: 'fire',
-        prompt: '火が消えかけている。<em>タップして薪をくべ</em>、火を絶やさずに守れ。',
-        card: {
-          certain: [
-            '火の痕跡が考古学的にありふれたものになるのは、およそ40万年前から。これは、火の使用が早かったと考える研究者も、慎重な研究者も一致している。',
-            'それ以前でもっとも信頼されている証拠は、南アフリカのワンダーワーク洞窟で見つかった約100万年前の焼けた骨と灰。査読を経た反論は現在まで出ていない。'
-          ],
-          debated: [
-            '原人が「火を使えた」のか「たまたまあった火のそばにいた」のかは、遺跡ごとに評価が割れている。ケニアのチェソワンジャ（約140万年前）は、近くの自然火災でも同じ痕跡ができるため否定的な見方が強い。'
-          ],
-          updated: [
-            'かつて「北京原人が50万年前に火を使った証拠」とされた周口店の分厚い灰の層は、1998年から2001年の再調査で<b>水に運ばれてきた堆積物</b>だと判明した。現地で火が燃えた跡ではなかった。'
-          ],
-          src: [
-            'Berna et al. (2012) PNAS 109(20): E1215–E1220 — ワンダーワーク洞窟',
-            'Goldberg et al. (2001) J. Human Evolution 41(5): 483–530 — 周口店の再解釈',
-            'Gowlett (2016) Phil. Trans. R. Soc. B 371: 20150164 / MacDonald et al. (2021) PNAS 118(31) — 約40万年前という節目'
-          ]
-        }
-      },
-      {
-        id: 'neander',
-        name: '旧人',
-        sub: 'ネアンデルタール人',
-        when: '約40万〜4万年前',
-        scene: 'ice',
-        interaction: 'dig',
-        prompt: '氷河期の洞窟。地面の下に何かが埋もれている。<em>指で土を払え</em>。',
-        card: {
-          certain: [
-            '⚠️ <b>ネアンデルタール人が進化してホモ・サピエンスになったのではない。</b>ネアンデルタール人は約40万年前から約4万年前まで、ホモ・サピエンスは約30万年前から現在まで。<b>両者は同じ時代に、別々に暮らしていた</b>。共通の祖先から枝分かれした<b>別の系統</b>である。',
-            'イスラエルのケバラ洞窟で見つかった<b>約6万年前</b>の遺体は、もっとも確実な埋葬の例のひとつとされる。掘られた穴があり、骨が関節でつながったまま残っていた。とくに、外れやすく普通は失われる<b>舌骨</b>まで元の位置にあった。遺体が速やかに埋められた何よりの証拠である。',
-            'この年代は、焼けた石器の熱ルミネッセンス法と、歯の電子スピン共鳴法という<b>2つの独立した方法</b>が一致して示している。',
-            'スペインのシマ・デ・ロス・ウエソスから出た約43万年前の人骨は、核DNAの解析によってネアンデルタール人につながる系統だと確認された。'
-          ],
-          debated: [
-            'フランスのラ・シャペル・オー・サンの遺体が意図的に埋葬されたものかは、<b>2014年・2015年・2016年と反論の応酬が続いており決着していない</b>。くぼみが人の手で掘られたのか自然にできたのかで意見が割れている。',
-            'シマ・デ・ロス・ウエソスには28体分もの人骨が集まっているが、<b>墓穴はなく、13メートルの縦穴の底</b>にある。遺体を運び込んだ可能性は残るものの、「埋葬」と呼べるかについては否定的な見方が強い。'
-          ],
-          updated: [
-            'イラクのシャニダール洞窟の「<b>花の埋葬</b>」は長く有名だった。遺体のまわりの花粉から、仲間が花を手向けたと考えられていたのである。だが2023年、その花粉は<b>巣を作るハナバチが運び込んだ</b>可能性が高いと示された。',
-            'ただし注意が必要である。花を否定したのは<b>シャニダールを掘っている当の研究チーム自身</b>で、同じ論文のなかで「遺体が意図的に安置されたこと自体」は今も支持している。<b>花は消えたが、埋葬まで消えたわけではない。</b>'
-          ],
-          src: [
-            'Valladas et al. (1987) Nature 330: 159–160 / Schwarcz et al. (1989) J. Archaeol. Sci. 16: 653–659 — ケバラの年代',
-            'Bar-Yosef et al. (1992) Current Anthropology 33(5): 497–550 — ケバラの埋葬',
-            'Meyer et al. (2016) Nature 531: 504–507 — シマ・デ・ロス・ウエソスの核DNA',
-            'Rendu et al. (2014) PNAS 111: 81–86 / Dibble et al. (2015) J. Archaeol. Sci. 53: 649–657 / Rendu et al. (2016) 同 69: 12–20 — ラ・シャペル論争',
-            'Hunt et al. (2023) J. Archaeol. Sci. 159: 105822 — シャニダールの花粉の再検討'
-          ]
-        }
-      },
-      {
-        id: 'sapiens',
-        name: '新人',
-        sub: 'ホモ・サピエンス',
-        when: '約30万年前〜',
-        scene: 'cave',
-        interaction: 'trace',
-        prompt: '石のかけらに、オーカー（赤い顔料）で<em>線を引く</em>。指でなぞれ。',
-        card: {
-          certain: [
-            '南アフリカのブロンボス洞窟から、<b>約7万3千年前</b>の石片が見つかった。表面をわざわざ磨いたうえで、オーカーのクレヨンで格子模様が描かれていた。何かの役に立つ道具ではなく、<b>模様そのものを描いた</b>ものである。',
-            '同じ洞窟では、約7万7千年前の刻み目を入れたオーカーの塊や、約7万5千年前の巻貝のビーズも見つかっている。穴の位置と擦れ跡から、ひもに通して身につけていたと分かる。',
-            'ケニアのオロルゲサイリエでは、すり潰した跡の残る赤い顔料が見つかっている。<b>28万年前より古い</b>ことは確実で、30万年前ごろまでさかのぼる可能性が高い。'
-          ],
-          debated: [
-            '模様が「意味を持つ記号」だったのか、単に描いただけなのかは分からない。ブロンボスの報告者自身も、意味までは判定できないとしている。',
-            '南アフリカのディークルーフ岩陰から出たダチョウの卵殻の刻線は「約6万年前」とされることが多いが、年代は<b>3つの研究室で結果が食い違っており</b>決着していない。最初期の刻線については、6万年前とする説と10万年前とする説で約4万年の開きがある。'
-          ],
-          updated: [
-            'かつて「芸術は約4万年前のヨーロッパで突然始まった」と考えられていた。ブロンボスの発見により、その3万年以上前のアフリカで、すでに人類は模様を描き身を飾っていたことが分かった。'
-          ],
-          src: [
-            'Henshilwood et al. (2018) Nature 562: 115–118 — 約7万3千年前の線描き',
-            'Henshilwood et al. (2002) Science 295: 1278–1280 / d\'Errico et al. (2005) J. Human Evolution 48: 3–24 — 刻線オーカーと貝ビーズ',
-            'Brooks et al. (2018) Science 360: 90–94 — オロルゲサイリエの加工顔料',
-            'Tribolo et al. (2013) J. Archaeol. Sci. 40: 3401–3411 / Jacobs &amp; Roberts (2017) J. Human Evolution 107: 1–13 — ディークルーフの年代論争'
-          ]
-        }
-      },
-      {
-        id: 'modern',
-        name: '農耕のはじまり',
-        sub: 'ホモ・サピエンス',
-        when: '約1万2000年前ごろ〜',
-        scene: 'field',
-        interaction: 'sow',
-        prompt: '畑に<em>タップして種をまけ</em>。実った中から大きい粒を選び、また まく。',
-        card: {
-          certain: [
-            '約1万2000年前ごろ、人類は植物や動物の育ち方を<b>自分で操れる</b>ことに気づいた。狩りと採集で移動する暮らしから、一か所に住む暮らしへ変わっていく。',
-            '農耕は<b>一度発明されて世界に広まったのではない</b>。世界の複数の地域で、それぞれ独立に始まった。中東のコムギ、中国のイネ、南アメリカのジャガイモ、東南アジアのバナナ。ニューギニア高地のクク湿地は、他地域と関係なく農耕へ移行した場所として世界遺産に登録されている。',
-            '農耕は<b>ある日突然始まったのではない</b>。1000年単位でじわじわ進んだ移行である。オオムギの研究では、栽培化が完成する前に「<b>栽培化以前の栽培</b>」という長い助走期間があったことが分かっている。'
-          ],
-          debated: [
-            '肥沃な三日月地帯（西アジア）で農耕がいつ始まったかは、資料によって数字が食い違う。この教材では幅をもたせて「約1万年前ごろ」としている。',
-            '世界に独立した農耕の起源地がいくつあるかは、研究者によって数え方が異なり決着していない。'
-          ],
-          updated: [
-            'かつては「農耕は中東で生まれ、そこから世界へ広まった」と考えられていた。現在では、<b>複数の地域が別々に、独自に農耕へたどりついた</b>と理解されている。'
-          ],
-          src: [
-            'Smithsonian Human Origins: Humans Change the World — 約1万2000年前の転換と栽培化年表',
-            'Denham et al. (2003) Science 301(5630) / UNESCO世界遺産 クク初期農耕遺跡 — ニューギニアの独立起源',
-            'Guo et al. (2025) Nature — オオムギの「栽培化以前の栽培」'
-          ]
-        }
-      },
-      {
-        id: 'future',
-        name: 'この先',
-        sub: 'ここから先は想像です',
-        when: '——',
-        scene: 'future',
-        interaction: 'none',
-        prompt: 'ここから先に、確かめられた事実はない。<em>画面を進めて考えよう。</em>',
-        card: {
-          debated: [
-            '人類がこの先どうなるかを示す証拠は、当然ながら存在しない。ここに書けることは<b>すべて想像</b>である。'
-          ],
-          updated: [
-            'ただし、この教材をたどるあいだにも、教科書に載っていた話が<b>3つ書き換わった</b>。<br>・北京原人が50万年前に火を使った証拠 → 水に流された堆積物だった<br>・ネアンデルタール人が花を供えて仲間を葬った → 花粉はハナバチが運んだ<br>・芸術は4万年前のヨーロッパで始まった → 7万年以上前のアフリカにさかのぼった',
-            'ドイツで見つかった木の槍の年代は、40万年前から30万年前、さらに<b>約20万年前</b>へと2度も引き下げられた。世界的な博物館の解説ページですら、まだ古い年代のままのものがある。',
-            '<b>だから、いま「確か」とされていることも、この先書き換わる。</b>未来を想像することより、<b>書き換わったときに考えを改められること</b>のほうが、人類が身につけた力なのかもしれない。'
-          ],
-          src: [
-            'Hutson et al. (2025) Science Advances — シェーニンゲンの槍の年代再改訂'
-          ]
-        }
-      }
-    ];
-
-    /* ==========================================================================
-       画面まわり
-       ========================================================================== */
-    const stage = document.getElementById('stage');
-    const canvas = document.getElementById('scene');
-    const ctx = canvas.getContext('2d');
-    const el = id => document.getElementById(id);
-
-    let W = 0, H = 0, dpr = 1;
-
-    function resize() {
-      const r = stage.getBoundingClientRect();
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = r.width; H = r.height;
-      canvas.width = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    window.addEventListener('resize', resize);
-
-    let chapterIndex = 0;
-    let state = 'title';   // title | play | card
-    let frame = 0;
-
-    function renderDots() {
-      el('dots').innerHTML = CHAPTERS.map((c, i) =>
-        `<span class="dot ${i < chapterIndex ? 'done' : (i === chapterIndex ? 'now' : '')}"></span>`
-      ).join('');
-    }
-
-    function openChapter(i) {
-      chapterIndex = i;
-      const c = CHAPTERS[i];
-      state = 'play';
-      renderDots();
-      el('eraName').textContent = c.name;
-      el('eraSub').textContent = c.sub;
-      el('eraWhen').textContent = c.when;
-      el('cardScreen').classList.remove('show');
-
-      if (c.pending) {
-        el('prompt').innerHTML = 'この時代の内容は<em>裏取り中</em>です。<br>調査が終わり次第、体験と解説が入ります。';
-        el('gaugeWrap').classList.remove('show');
-        el('mainBtn').textContent = 'つぎへ';
-        el('mainBtn').onclick = () => nextChapter();
-        return;
-      }
-
-      el('prompt').innerHTML = c.prompt;
-      el('mainBtn').textContent = 'スキップ';
-      el('mainBtn').onclick = () => finishInteraction();
-
-      if (c.interaction === 'fire') startFire();
-      if (c.interaction === 'trace') startTrace();
-      if (c.interaction === 'dig') startDig();
-      if (c.interaction === 'sow') startSow();
-      if (c.interaction === 'none') {
-        el('gaugeWrap').classList.remove('show');
-        el('mainBtn').textContent = 'すすむ';
-        el('mainBtn').onclick = () => finishInteraction();
-      }
-    }
-
-    function finishInteraction() {
-      const c = CHAPTERS[chapterIndex];
-      el('gaugeWrap').classList.remove('show');
-      if (!c.card) { nextChapter(); return; }
-      state = 'card';
-      el('cardTitle').textContent = `${c.name}（${c.sub}）`;
-      el('cardWhen').textContent = c.when;
-      const f = c.card;
-      const block = (cls, head, items) =>
-        items && items.length
-          ? `<div class="fact ${cls}"><h3>${head}</h3>${items.map(t => `<p>${t}</p>`).join('')}</div>`
-          : '';
-      el('cardBody').innerHTML =
-        block('certain', '確かなこと', f.certain) +
-        block('debated', 'まだ議論が続いていること', f.debated) +
-        block('updated', 'かつての通説が書き換わったこと', f.updated) +
-        (f.src ? `<div class="src">出典<br>${f.src.join('<br>')}</div>` : '');
-      el('cardScreen').classList.add('show');
-    }
-
-    function nextChapter() {
-      if (chapterIndex + 1 < CHAPTERS.length) openChapter(chapterIndex + 1);
-      else showTimeline();
-    }
-
-    /* 年表。棒の重なりで「一直線の階段ではない」ことを目で見せるのが目的。
-       種の生存年代は対数目盛で並べる（200万年と1万年を同じ図に載せるため）。 */
-    const SPAN = [
-      { name: 'ホモ・エレクトス（原人）',      from: 1890000, to: 110000, color: '#f59e0b' },
-      { name: 'ネアンデルタール人（旧人）',    from: 400000,  to: 40000,  color: '#a78bfa' },
-      { name: 'ホモ・サピエンス（新人）',      from: 300000,  to: 0,      color: '#4ade80' }
-    ];
-
-    function showTimeline() {
-      state = 'card';
-      const L = v => Math.log10(Math.max(v, 8000));
-      const lo = L(2200000), hi = L(8000);
-      const pos = v => (lo - L(v)) / (lo - hi) * 100;
-
-      const bars = SPAN.map(s => {
-        const a = pos(s.from), b = pos(s.to);
-        return `<div style="margin-bottom:11px;">
-          <div style="font-size:11px;color:#cfd5e4;margin-bottom:3px;">${s.name}</div>
-          <div style="position:relative;height:13px;background:#161c2c;border-radius:7px;">
-            <div style="position:absolute;left:${a}%;width:${Math.max(3, b - a)}%;top:0;bottom:0;
-                        background:${s.color};border-radius:7px;"></div>
-          </div>
-        </div>`;
-      }).join('');
-
-      el('cardTitle').textContent = '人類の歩みは、階段ではなかった';
-      el('cardWhen').textContent = '左が古い ／ 右が現在（対数目盛）';
-      el('cardBody').innerHTML = bars +
-        `<div class="fact certain"><h3>棒が重なっていることに注目</h3>
-          <p>ネアンデルタール人とホモ・サピエンスは、<b>26万年ものあいだ同じ地球に生きていた</b>。
-          片方がもう片方に進化したのではない。共通の祖先から枝分かれした<b>別の系統</b>が、
-          長いあいだ隣り合って暮らしていた。</p>
-          <p>「原人 → 旧人 → 新人」という並べ方は、順番を覚えるには便利だが、
-          <b>一列に進んだという意味ではない</b>。人類の歴史は一本の階段ではなく、
-          枝分かれした木である。多くの枝は途中で絶えた。残ったのが私たちだけだった。</p></div>` +
-        `<div class="src">年代の出典: Smithsonian National Museum of Natural History,
-          Human Origins Program（各種のページ）<br>
-          詳しい根拠と出典は docs/human-evolution-facts.md にまとめている</div>`;
-      el('cardNext').textContent = 'はじめから';
-      el('cardScreen').classList.add('show');
-      el('cardNext').onclick = () => {
-        el('cardNext').textContent = 'つぎの時代へ';
-        el('cardNext').onclick = () => nextChapter();
-        openChapter(0);
-      };
-    }
-
-    el('cardNext').onclick = () => nextChapter();
-
-    /* オープニング映像。音つきの自動再生は禁止されているため、
-       「はじめる」を押したこの瞬間（＝ユーザー操作）に再生する。
-       再生できなければ必ず本編へ進ませ、映像で詰まらせない。 */
-    const introScreen = el('introScreen');
-    const introVideo = el('introVideo');
-    let introTimer = null;
-
-    function endIntro() {
-      if (introScreen.style.visibility === 'hidden') return;
-      clearTimeout(introTimer);
-      introScreen.style.opacity = '0';
-      introScreen.style.visibility = 'hidden';
-      try { introVideo.pause(); } catch (e) {}
-      resize();
-      openChapter(0);
-    }
-
-    el('btnSkipIntro').onclick = endIntro;
-    introVideo.addEventListener('ended', endIntro);
-    introVideo.addEventListener('error', endIntro);
-
-    el('startBtn').onclick = () => {
-      el('titleScreen').classList.add('hide');
-      introScreen.style.visibility = 'visible';
-      introScreen.style.opacity = '1';
-      try { introVideo.currentTime = 0; } catch (e) {}
-      introVideo.muted = false;
-      const p = introVideo.play();
-      if (p && p.catch) p.catch(() => {
-        introVideo.muted = true;                     // 音つきが拒否されたらミュートで再挑戦
-        const r = introVideo.play();
-        if (r && r.catch) r.catch(endIntro);
-      });
-      introTimer = setTimeout(() => {               // 再生が始まらない場合の保険
-        if (introVideo.paused || introVideo.currentTime === 0) endIntro();
-      }, 5000);
-    };
-
-    /* ==========================================================================
-       体験1: 火を絶やさない（原人）
-       ==========================================================================
-       「火をおこす」ではなく「火を守る」。
-       原人が自ら発火させられた証拠はなく、山火事などで得た火を持ち帰って
-       維持していたと考えられているため、操作もそれに合わせている。 */
-    const fire = { fuel: 100, held: 0, goal: 600, alive: true, sparks: [] };
-
-    function startFire() {
-      fire.fuel = 62; fire.held = 0; fire.alive = true; fire.sparks = [];
-      el('gaugeWrap').classList.add('show');
-      el('gaugeName').textContent = '火の勢い';
-    }
-
-    function addFuel(x, y) {
-      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'fire') return;
-      fire.fuel = Math.min(100, fire.fuel + 17);
-      for (let i = 0; i < 14; i++) {
-        fire.sparks.push({
-          x: W * 0.5 + (Math.random() - 0.5) * 40,
-          y: H * 0.56,
-          vx: (Math.random() - 0.5) * 2.2,
-          vy: -(Math.random() * 3.4 + 1.2),
-          life: 40 + Math.random() * 25
-        });
-      }
-    }
-
-    function updateFire() {
-      const c = CHAPTERS[chapterIndex];
-      if (!c || c.interaction !== 'fire' || state !== 'play') return;
-      fire.fuel -= 0.30;
-      if (fire.fuel <= 0) { fire.fuel = 0; fire.held = Math.max(0, fire.held - 3); }
-      else fire.held++;
-
-      for (let i = fire.sparks.length - 1; i >= 0; i--) {
-        const s = fire.sparks[i];
-        s.x += s.vx; s.y += s.vy; s.vy += 0.045; s.life--;
-        if (s.life <= 0) fire.sparks.splice(i, 1);
-      }
-
-      const pct = Math.round(fire.fuel);
-      el('gaugeVal').textContent = pct + '%';
-      el('gaugeFill').style.width = pct + '%';
-      el('gaugeFill').classList.toggle('low', pct < 25);
-
-      if (fire.fuel < 22) el('prompt').innerHTML = '火が消えそうだ。<em>タップして薪をくべろ</em>。';
-      else el('prompt').innerHTML = c.prompt;
-
-      if (fire.held >= fire.goal) finishInteraction();
-    }
-
-    /* ==========================================================================
-       体験4: 種をまく（農耕）
-       ==========================================================================
-       「まいたら収穫」で終わらせず、世代を重ねて粒が大きくなる形にしている。
-       農耕はある日始まったのではなく1000年単位で進んだ移行であり、
-       一度の収穫で完成する演出は誤解を与えるため。 */
-    const sow = { seeds: [], gen: 0, goal: 4, perGen: 6 };
-
-    function startSow() {
-      sow.seeds = []; sow.gen = 0;
-      el('gaugeWrap').classList.add('show');
-      el('gaugeName').textContent = '世代';
-      updateSowGauge();
-    }
-
-    function sowAt(px, py) {
-      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'sow') return;
-      const gy = H * 0.72;
-      if (py < gy - H * 0.16 || py > gy + H * 0.10) return;
-      sow.seeds.push({ x: px, grow: 0, gen: sow.gen });
-      if (sow.seeds.filter(s => s.gen === sow.gen).length >= sow.perGen) {
-        sow.gen++;
-        updateSowGauge();
-        if (sow.gen >= sow.goal) { setTimeout(finishInteraction, 900); return; }
-        el('prompt').innerHTML = `<em>${sow.gen}世代目</em>。大きく実った粒を選んで、また まく。粒が少しずつ大きくなる。`;
-      }
-    }
-
-    function updateSowGauge() {
-      el('gaugeVal').textContent = `${sow.gen} / ${sow.goal}`;
-      el('gaugeFill').style.width = (sow.gen / sow.goal * 100) + '%';
-    }
-
-    function updateSow() {
-      sow.seeds.forEach(s => { if (s.grow < 1) s.grow += 0.02; });
-    }
-
-    function drawSow() {
-      const gy = H * 0.72;
-      sow.seeds.forEach(s => {
-        const scale = 0.55 + s.gen * 0.16;          // 世代が進むほど大きく実る
-        const h = H * 0.12 * s.grow * scale;
-        ctx.strokeStyle = '#7cb342'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(s.x, gy); ctx.lineTo(s.x, gy - h); ctx.stroke();
-        if (s.grow > 0.55) {                         // 穂
-          ctx.fillStyle = '#e3c363';
-          const ew = 5 * scale, eh = 7 * scale;
-          for (let i = 0; i < 4; i++) {
-            const yy = gy - h + i * eh * 0.85;
-            ctx.beginPath(); ctx.ellipse(s.x - ew * 0.7, yy, ew, eh, -0.3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(s.x + ew * 0.7, yy, ew, eh,  0.3, 0, Math.PI * 2); ctx.fill();
-          }
-        }
-      });
-    }
-
-    /* ==========================================================================
-       体験2: 土を払う（旧人）
-       ==========================================================================
-       「弔う」を体験させるのではなく「発掘する」を体験させている。
-       ネアンデルタール人が意図的に埋葬したかは今も論争中であり、
-       埋葬を確定事項として演出すると誤った理解を与えるため。
-       掘り出したうえで「これは埋葬か、自然にそうなったのか」を考えさせる。 */
-    const dig = { cells: [], cols: 12, rows: 9, cleared: 0, total: 0 };
-
-    function startDig() {
-      dig.cells = [];
-      for (let r = 0; r < dig.rows; r++)
-        for (let c = 0; c < dig.cols; c++)
-          dig.cells.push({ c, r, on: true });
-      dig.total = dig.cells.length;
-      dig.cleared = 0;
-      el('gaugeWrap').classList.add('show');
-      el('gaugeName').textContent = '掘り出した範囲';
-      updateDigGauge();
-    }
-
-    function digArea() {
-      return { x: W * 0.08, y: H * 0.30, w: W * 0.84, h: H * 0.34 };
-    }
-
-    function digAt(px, py) {
-      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'dig') return;
-      const a = digArea();
-      const cw = a.w / dig.cols, ch = a.h / dig.rows;
-      const R = Math.max(24, W * 0.075);
-      let changed = false;
-      dig.cells.forEach(cell => {
-        if (!cell.on) return;
-        const x = a.x + cell.c * cw + cw / 2;
-        const y = a.y + cell.r * ch + ch / 2;
-        if (Math.hypot(px - x, py - y) < R) { cell.on = false; changed = true; }
-      });
-      if (!changed) return;
-      dig.cleared = dig.cells.filter(c => !c.on).length;
-      updateDigGauge();
-      if (dig.cleared / dig.total >= 0.86) setTimeout(finishInteraction, 700);
-    }
-
-    function updateDigGauge() {
-      const pct = Math.round(dig.cleared / dig.total * 100);
-      el('gaugeVal').textContent = pct + '%';
-      el('gaugeFill').style.width = pct + '%';
-    }
-
-    function drawDig() {
-      const a = digArea();
-
-      ctx.save();                                    // 掘り出される遺体（屈葬の姿勢）
-      ctx.translate(a.x + a.w * 0.5, a.y + a.h * 0.55);
-      ctx.fillStyle = '#e6e0d0';
-      ctx.beginPath(); ctx.arc(-a.w * 0.26, -a.h * 0.10, a.w * 0.062, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#3d3a32';                     // 眼窩
-      ctx.beginPath(); ctx.arc(-a.w * 0.28, -a.h * 0.12, a.w * 0.017, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#e6e0d0'; ctx.lineCap = 'round';
-      ctx.lineWidth = Math.max(5, a.w * 0.026);      // 背骨
-      ctx.beginPath();
-      ctx.moveTo(-a.w * 0.19, -a.h * 0.05);
-      ctx.quadraticCurveTo(0, a.h * 0.02, a.w * 0.17, -a.h * 0.02);
-      ctx.stroke();
-      ctx.lineWidth = Math.max(3, a.w * 0.014);      // 肋骨
-      for (let i = 0; i < 5; i++) {
-        const t = i / 4, x = -a.w * 0.15 + t * a.w * 0.26;
-        ctx.beginPath();
-        ctx.moveTo(x, -a.h * 0.05);
-        ctx.quadraticCurveTo(x + a.w * 0.02, a.h * 0.10, x - a.w * 0.02, a.h * 0.16);
-        ctx.stroke();
-      }
-      ctx.lineWidth = Math.max(5, a.w * 0.024);      // 折りたたまれた脚
-      ctx.beginPath();
-      ctx.moveTo(a.w * 0.16, -a.h * 0.02);
-      ctx.lineTo(a.w * 0.30, a.h * 0.16);
-      ctx.lineTo(a.w * 0.10, a.h * 0.26);
-      ctx.stroke();
-      ctx.beginPath();                               // 胸の上で組まれた腕
-      ctx.moveTo(-a.w * 0.14, -a.h * 0.01);
-      ctx.lineTo(-a.w * 0.02, a.h * 0.12);
-      ctx.lineTo(-a.w * 0.16, a.h * 0.16);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.save();                                    // 墓穴らしき輪郭
-      ctx.strokeStyle = 'rgba(255,255,255,0.20)';
-      ctx.setLineDash([7, 6]);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(a.x + a.w / 2, a.y + a.h * 0.55, a.w * 0.44, a.h * 0.42, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      const cw = a.w / dig.cols, ch = a.h / dig.rows;   // 残っている土
-      dig.cells.forEach(cell => {
-        if (!cell.on) return;
-        const x = a.x + cell.c * cw, y = a.y + cell.r * ch;
-        const shade = 30 + ((cell.c * 7 + cell.r * 13) % 5) * 6;
-        ctx.fillStyle = `rgb(${shade + 32},${shade + 22},${shade + 12})`;
-        ctx.fillRect(x - 0.5, y - 0.5, cw + 1, ch + 1);
-      });
-    }
-
-    /* ==========================================================================
-       体験3: 線を引く（新人）
-       ==========================================================================
-       ブロンボス洞窟で見つかった約7万3千年前の石片には、表面を磨いたうえで
-       オーカーのクレヨンで格子模様が描かれていた。その行為をなぞる。
-       線の本数は再現であり、実物の正確な本数を主張するものではない。 */
-    const trace = { lines: [], active: -1, done: 0 };
-
-    function startTrace() {
-      // 石片の中央に、斜めに交差する格子模様を置く
-      trace.lines = [];
-      // 石片の描画範囲（sw=0.74W, sh=0.30H）の内側に収まる大きさにする
-      const cx = 0.5, cy = 0.47, w = 0.25, h = 0.105;
-      for (let i = 0; i < 4; i++) {           // 右上がりの線
-        const t = i / 3;
-        trace.lines.push(makeLine(cx - w + t * w * 0.7, cy + h, cx - w * 0.3 + t * w * 0.7, cy - h));
-      }
-      for (let i = 0; i < 3; i++) {           // 交差する線
-        const t = i / 2;
-        trace.lines.push(makeLine(cx - w, cy - h * 0.55 + t * h * 0.9, cx + w, cy - h * 0.2 + t * h * 0.9));
-      }
-      trace.active = -1;
-      trace.done = 0;
-      el('gaugeWrap').classList.add('show');
-      el('gaugeName').textContent = '描いた線';
-      updateTraceGauge();
-    }
-
-    function makeLine(x1, y1, x2, y2) {
-      const pts = [];
-      const N = 14;
-      for (let i = 0; i <= N; i++) pts.push({ t: i / N, hit: false });
-      return { x1, y1, x2, y2, pts, complete: false };
-    }
-
-    function traceAt(px, py) {
-      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'trace') return;
-      const R = Math.max(20, W * 0.055);
-      trace.lines.forEach(L => {
-        if (L.complete) return;
-        L.pts.forEach(p => {
-          if (p.hit) return;
-          const x = (L.x1 + (L.x2 - L.x1) * p.t) * W;
-          const y = (L.y1 + (L.y2 - L.y1) * p.t) * H;
-          if (Math.hypot(px - x, py - y) < R) p.hit = true;
-        });
-        const hits = L.pts.filter(p => p.hit).length;
-        if (hits / L.pts.length >= 0.8) L.complete = true;
-      });
-      const done = trace.lines.filter(L => L.complete).length;
-      if (done !== trace.done) { trace.done = done; updateTraceGauge(); }
-      if (done === trace.lines.length) setTimeout(finishInteraction, 600);
-    }
-
-    function updateTraceGauge() {
-      const n = trace.lines.length || 1;
-      el('gaugeVal').textContent = `${trace.done} / ${n} 本`;
-      el('gaugeFill').style.width = (trace.done / n * 100) + '%';
-    }
-
-    function drawTrace() {
-      const cx = W * 0.5, cy = H * 0.47;
-      const sw = W * 0.74, sh = H * 0.30;
-
-      ctx.save();                                   // 石片（シルクリート）
-      ctx.fillStyle = '#8a7f70';
-      ctx.beginPath();
-      ctx.moveTo(cx - sw / 2, cy - sh * 0.36);
-      ctx.lineTo(cx - sw * 0.36, cy - sh / 2);
-      ctx.lineTo(cx + sw * 0.40, cy - sh * 0.42);
-      ctx.lineTo(cx + sw / 2, cy + sh * 0.30);
-      ctx.lineTo(cx + sw * 0.30, cy + sh / 2);
-      ctx.lineTo(cx - sw * 0.42, cy + sh * 0.40);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.10)';     // 磨かれた面
-      ctx.fill();
-      ctx.restore();
-
-      trace.lines.forEach(L => {                    // 線
-        const x1 = L.x1 * W, y1 = L.y1 * H, x2 = L.x2 * W, y2 = L.y2 * H;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = 'rgba(120,90,70,0.45)';   // 下書き
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-
-        const hits = L.pts.filter(p => p.hit).length / L.pts.length;
-        if (hits > 0) {                             // なぞった分だけ赤くなる
-          ctx.strokeStyle = L.complete ? '#c0392b' : 'rgba(192,57,43,0.75)';
-          ctx.lineWidth = L.complete ? 6 : 5;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x1 + (x2 - x1) * hits, y1 + (y2 - y1) * hits);
-          ctx.stroke();
-        }
-      });
-    }
-
-    /* ==========================================================================
-       シーン描画（時代ごとの背景）
-       ========================================================================== */
-    const SKY = {
-      forest: ['#16233a', '#2b4a52', '#4a6b4a'],
-      ice:    ['#0b1a3a', '#1e3d6b', '#8fc7dd'],
-      cave:   ['#1a1208', '#2e1f10', '#4a3018'],
-      field:  ['#1b2a4a', '#3b5a8a', '#c2a06a'],
-      future: ['#000000', '#141a3a', '#2c2c54']
-    };
-
-    function drawScene() {
-      const c = CHAPTERS[chapterIndex] || CHAPTERS[0];
-      const pal = SKY[c.scene] || SKY.forest;
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, pal[0]); g.addColorStop(0.55, pal[1]); g.addColorStop(1, pal[2]);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-
-      const groundY = H * 0.72;
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      ctx.fillRect(0, groundY, W, H - groundY);
-
-      // 遠景の木のシルエット（森）
-      if (c.scene === 'forest') {
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        for (let i = 0; i < 7; i++) {
-          const x = (i * 0.16 + 0.03) * W;
-          const h = H * (0.16 + ((i * 37) % 10) / 90);
-          ctx.fillRect(x - 4, groundY - h, 8, h);
-          ctx.beginPath();
-          ctx.arc(x, groundY - h, h * 0.34, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      if (c.interaction === 'fire') drawFire(groundY);
-      if (c.interaction === 'trace') drawTrace();
-      if (c.interaction === 'dig') drawDig();
-      if (c.interaction === 'sow') drawSow();
-    }
-
-    function drawFire(groundY) {
-      const cx = W * 0.5, base = groundY - 6;
-      const power = fire.fuel / 100;
-
-      ctx.fillStyle = '#3a2a1a';                    // 薪
-      ctx.fillRect(cx - 34, base - 8, 68, 10);
-      ctx.fillRect(cx - 24, base - 15, 48, 9);
-
-      if (power > 0.02) {
-        const t = frame * 0.22;
-        [['#ff2d00', 1.0], ['#ff8c42', 0.68], ['#ffe08a', 0.36]].forEach(([col, sc], k) => {
-          ctx.fillStyle = col;
-          ctx.globalAlpha = 0.55 + power * 0.45;
-          ctx.beginPath();
-          ctx.moveTo(cx, base - 14);
-          const hgt = (28 + power * 92) * sc;
-          for (let i = 0; i <= 12; i++) {
-            const p = i / 12;
-            const sway = Math.sin(t + p * 4.5 + k) * (9 * p * power);
-            const rad = (16 + power * 26) * sc * Math.sin(Math.PI * p);
-            ctx.lineTo(cx + sway + rad * (i % 2 ? 1 : -1), base - 14 - p * hgt);
-          }
-          ctx.closePath();
-          ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-      }
-
-      ctx.fillStyle = '#ffd08a';                    // 火の粉
-      fire.sparks.forEach(s => {
-        ctx.globalAlpha = Math.max(0, s.life / 60);
-        ctx.fillRect(s.x, s.y, 3, 3);
-      });
-      ctx.globalAlpha = 1;
-    }
-
-    /* ==========================================================================
-       入力（タップ）
-       ========================================================================== */
-    let dragging = false;
-
-    function localPos(e) {
-      const r = canvas.getBoundingClientRect();
-      const t = e.touches ? e.touches[0] : e;
-      return { x: t.clientX - r.left, y: t.clientY - r.top };
-    }
-
-    function onDown(e) {
-      if (state !== 'play') return;
-      const c = CHAPTERS[chapterIndex];
-      if (!c) return;
-      e.preventDefault();
-      if (c.interaction === 'fire') addFuel();
-      if (c.interaction === 'trace' || c.interaction === 'dig') {
-        dragging = true;
-        const p = localPos(e);
-        if (c.interaction === 'trace') traceAt(p.x, p.y); else digAt(p.x, p.y);
-      }
-      if (c.interaction === 'sow') { const p = localPos(e); sowAt(p.x, p.y); }
-    }
-
-    function onMove(e) {
-      if (!dragging || state !== 'play') return;
-      const c = CHAPTERS[chapterIndex];
-      if (!c) return;
-      if (c.interaction !== 'trace' && c.interaction !== 'dig') return;
-      e.preventDefault();
-      const p = localPos(e);
-      if (c.interaction === 'trace') traceAt(p.x, p.y); else digAt(p.x, p.y);
-    }
-
-    function onUp() { dragging = false; }
-
-    canvas.addEventListener('touchstart', onDown, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onUp);
-    canvas.addEventListener('mousedown', onDown);
-    canvas.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-
-    /* ==========================================================================
-       メインループ（60fps固定）
-       ========================================================================== */
-    const DT = 1000 / 60;
-    let last = 0, acc = 0;
-
-    function loop(now) {
-      requestAnimationFrame(loop);
-      if (!last) { last = now; return; }
-      let d = now - last; last = now;
-      if (d > 200) d = DT;
-      acc += d;
-      let steps = 0;
-      while (acc >= DT && steps < 5) { frame++; updateFire(); updateSow(); acc -= DT; steps++; }
-      drawScene();
-    }
-
-    resize();
-    renderDots();
-    requestAnimationFrame(loop);
-  </script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
