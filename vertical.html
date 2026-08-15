@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f111a">
+  <title>人類進化のあゆみ ─ 縦画面版（制作中）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f111a;
+      --ink: #e8eaf0;
+      --muted: #97a0b5;
+      --line: #2c3550;
+      --certain: #4ade80;   /* 確かなこと */
+      --debated: #fbbf24;   /* 議論が続いていること */
+      --updated: #60a5fa;   /* 書き換わったこと */
+      --accent: #ff8c42;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: #05070d;
+      color: var(--ink);
+      font-family: 'DotGothic16', system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* 縦画面が主。横長の画面では 9:16 の枠に収める */
+    #stage {
+      position: relative;
+      width: min(100vw, calc(100dvh * 9 / 16));
+      height: min(100dvh, calc(100vw * 16 / 9));
+      background: var(--bg);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      touch-action: none;
+    }
+
+    #scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* ---- 上部: 章インジケータと時代表示 ---- */
+    .topbar {
+      position: relative;
+      z-index: 2;
+      padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: linear-gradient(180deg, rgba(5,7,13,0.92), rgba(5,7,13,0));
+    }
+
+    .dots { display: flex; gap: 6px; align-items: center; }
+
+    .dot {
+      flex: 1;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--line);
+      transition: background 0.3s;
+    }
+
+    .dot.done { background: var(--muted); }
+    .dot.now  { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+    .era-line { display: flex; align-items: baseline; gap: 8px; }
+    .era-name { font-size: 17px; font-weight: bold; }
+    .era-sub  { font-size: 10px; color: var(--muted); }
+    .era-when { margin-left: auto; font-size: 11px; color: var(--accent); }
+
+    /* ---- 下部: 解説と操作 ---- */
+    .panel {
+      position: relative;
+      z-index: 2;
+      margin-top: auto;
+      padding: 14px 14px max(16px, env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(5,7,13,0.96) 70%, rgba(5,7,13,0));
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .prompt { font-size: 14px; line-height: 1.6; min-height: 44px; }
+    .prompt em { color: var(--accent); font-style: normal; font-weight: bold; }
+
+    .gauge-wrap { display: none; flex-direction: column; gap: 4px; }
+    .gauge-wrap.show { display: flex; }
+    .gauge-label { font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; }
+    .gauge { height: 8px; background: #1a2032; border-radius: 4px; overflow: hidden; }
+    .gauge-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4d1c, #f6d365); transition: width 0.12s linear; }
+    .gauge-fill.low { background: #64748b; }
+
+    .btn {
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 13px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ff8c42, #ffb95e);
+      color: #1a0f04;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn.ghost { background: transparent; border: 2px solid var(--line); color: var(--muted); font-size: 13px; padding: 9px; }
+    .btn:active { transform: translateY(1px); }
+
+    /* ---- 事実カード ---- */
+    .card-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      background: rgba(5, 7, 13, 0.97);
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      touch-action: pan-y;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0s linear 0.3s;
+    }
+
+    .card-screen.show { opacity: 1; visibility: visible; transition: opacity 0.3s; }
+
+    .card-title { font-size: 19px; font-weight: bold; }
+    .card-when { font-size: 11px; color: var(--accent); }
+
+    .fact { border-left: 3px solid var(--line); padding: 8px 0 8px 11px; }
+    .fact h3 { font-size: 11px; margin-bottom: 5px; letter-spacing: 1px; }
+    .fact p  { font-size: 13px; line-height: 1.75; color: #cfd5e4; }
+    .fact p + p { margin-top: 7px; }
+
+    .fact.certain { border-color: var(--certain); }
+    .fact.certain h3 { color: var(--certain); }
+    .fact.debated { border-color: var(--debated); }
+    .fact.debated h3 { color: var(--debated); }
+    .fact.updated { border-color: var(--updated); }
+    .fact.updated h3 { color: var(--updated); }
+
+    .src { font-size: 10px; color: #6b7488; line-height: 1.6; margin-top: 6px; }
+
+    .spacer { flex: 1; min-height: 8px; }
+
+    /* ---- タイトル画面 ---- */
+    .title-screen {
+      position: absolute; inset: 0; z-index: 8;
+      background: #05070d;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; padding: 24px; text-align: center;
+      transition: opacity 0.4s, visibility 0s linear 0.4s;
+    }
+    .title-screen.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    .title-screen h1 { font-size: 24px; line-height: 1.5; }
+    .title-screen p { font-size: 13px; color: var(--muted); line-height: 1.8; }
+    .wip {
+      font-size: 11px; color: var(--debated);
+      border: 1px dashed var(--debated); border-radius: 8px; padding: 8px 12px; line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="scene"></canvas>
+
+    <div class="topbar">
+      <div class="dots" id="dots"></div>
+      <div class="era-line">
+        <span class="era-name" id="eraName">—</span>
+        <span class="era-sub" id="eraSub"></span>
+        <span class="era-when" id="eraWhen"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="prompt" id="prompt"></div>
+      <div class="gauge-wrap" id="gaugeWrap">
+        <div class="gauge-label"><span id="gaugeName">火の勢い</span><span id="gaugeVal">100%</span></div>
+        <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+      </div>
+      <button class="btn" id="mainBtn">つぎへ</button>
+    </div>
+
+    <!-- 事実カード -->
+    <div class="card-screen" id="cardScreen">
+      <div>
+        <div class="card-title" id="cardTitle"></div>
+        <div class="card-when" id="cardWhen"></div>
+      </div>
+      <div id="cardBody"></div>
+      <div class="spacer"></div>
+      <button class="btn" id="cardNext">つぎの時代へ</button>
+    </div>
+
+    <!-- タイトル -->
+    <div class="title-screen" id="titleScreen">
+      <h1>人類進化のあゆみ</h1>
+      <p>原人から現代人まで、<br>人類がたどった道を体験します。</p>
+      <div class="wip">
+        制作中の土台です。<br>
+        現在、掲載する事実を一次資料で裏取りしています。<br>
+        本文と数値は確定後に差し替わります。
+      </div>
+      <button class="btn" id="startBtn" style="max-width:240px;">はじめる</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       章データ
+       ==========================================================================
+       facts は3段構成:
+         certain … 研究者の間で争いがない、断定してよいこと
+         debated … 今も議論が続いていて、断定してはいけないこと
+         updated … かつて教わったが、その後書き換わったこと
+       出典は src に明記する。裏取りが済んでいない章は pending: true。 */
+    const CHAPTERS = [
+      {
+        id: 'erectus',
+        name: '原人',
+        sub: 'ホモ・エレクトス',
+        when: '約200万〜10万年前',
+        scene: 'forest',
+        interaction: 'fire',
+        prompt: '火が消えかけている。<em>タップして薪をくべ</em>、火を絶やさずに守れ。',
+        card: {
+          certain: [
+            '火の痕跡が考古学的にありふれたものになるのは、およそ40万年前から。これは、火の使用が早かったと考える研究者も、慎重な研究者も一致している。',
+            'それ以前でもっとも信頼されている証拠は、南アフリカのワンダーワーク洞窟で見つかった約100万年前の焼けた骨と灰。査読を経た反論は現在まで出ていない。'
+          ],
+          debated: [
+            '原人が「火を使えた」のか「たまたまあった火のそばにいた」のかは、遺跡ごとに評価が割れている。ケニアのチェソワンジャ（約140万年前）は、近くの自然火災でも同じ痕跡ができるため否定的な見方が強い。'
+          ],
+          updated: [
+            'かつて「北京原人が50万年前に火を使った証拠」とされた周口店の分厚い灰の層は、1998年から2001年の再調査で<b>水に運ばれてきた堆積物</b>だと判明した。現地で火が燃えた跡ではなかった。'
+          ],
+          src: [
+            'Berna et al. (2012) PNAS 109(20): E1215–E1220 — ワンダーワーク洞窟',
+            'Goldberg et al. (2001) J. Human Evolution 41(5): 483–530 — 周口店の再解釈',
+            'Gowlett (2016) Phil. Trans. R. Soc. B 371: 20150164 / MacDonald et al. (2021) PNAS 118(31) — 約40万年前という節目'
+          ]
+        }
+      },
+      { id: 'neander', name: '旧人', sub: 'ネアンデルタール人', when: '調査中', scene: 'ice',   interaction: 'pending', pending: true },
+      { id: 'sapiens', name: '新人', sub: 'クロマニョン人',     when: '調査中', scene: 'cave',  interaction: 'pending', pending: true },
+      { id: 'modern',  name: '現代人', sub: 'ホモ・サピエンス',  when: '調査中', scene: 'field', interaction: 'pending', pending: true },
+      { id: 'future',  name: '未来',  sub: 'これは想像です',     when: '——',    scene: 'future', interaction: 'pending', pending: true }
+    ];
+
+    /* ==========================================================================
+       画面まわり
+       ========================================================================== */
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('scene');
+    const ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+
+    let W = 0, H = 0, dpr = 1;
+
+    function resize() {
+      const r = stage.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = r.width; H = r.height;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+
+    let chapterIndex = 0;
+    let state = 'title';   // title | play | card
+    let frame = 0;
+
+    function renderDots() {
+      el('dots').innerHTML = CHAPTERS.map((c, i) =>
+        `<span class="dot ${i < chapterIndex ? 'done' : (i === chapterIndex ? 'now' : '')}"></span>`
+      ).join('');
+    }
+
+    function openChapter(i) {
+      chapterIndex = i;
+      const c = CHAPTERS[i];
+      state = 'play';
+      renderDots();
+      el('eraName').textContent = c.name;
+      el('eraSub').textContent = c.sub;
+      el('eraWhen').textContent = c.when;
+      el('cardScreen').classList.remove('show');
+
+      if (c.pending) {
+        el('prompt').innerHTML = 'この時代の内容は<em>裏取り中</em>です。<br>調査が終わり次第、体験と解説が入ります。';
+        el('gaugeWrap').classList.remove('show');
+        el('mainBtn').textContent = 'つぎへ';
+        el('mainBtn').onclick = () => nextChapter();
+        return;
+      }
+
+      el('prompt').innerHTML = c.prompt;
+      el('mainBtn').textContent = 'スキップ';
+      el('mainBtn').onclick = () => finishInteraction();
+
+      if (c.interaction === 'fire') startFire();
+    }
+
+    function finishInteraction() {
+      const c = CHAPTERS[chapterIndex];
+      el('gaugeWrap').classList.remove('show');
+      if (!c.card) { nextChapter(); return; }
+      state = 'card';
+      el('cardTitle').textContent = `${c.name}（${c.sub}）`;
+      el('cardWhen').textContent = c.when;
+      const f = c.card;
+      const block = (cls, head, items) =>
+        items && items.length
+          ? `<div class="fact ${cls}"><h3>${head}</h3>${items.map(t => `<p>${t}</p>`).join('')}</div>`
+          : '';
+      el('cardBody').innerHTML =
+        block('certain', '確かなこと', f.certain) +
+        block('debated', 'まだ議論が続いていること', f.debated) +
+        block('updated', 'かつての通説が書き換わったこと', f.updated) +
+        (f.src ? `<div class="src">出典<br>${f.src.join('<br>')}</div>` : '');
+      el('cardScreen').classList.add('show');
+    }
+
+    function nextChapter() {
+      if (chapterIndex + 1 < CHAPTERS.length) openChapter(chapterIndex + 1);
+      else openChapter(0);   // 年表画面は実装予定
+    }
+
+    el('cardNext').onclick = () => nextChapter();
+    el('startBtn').onclick = () => {
+      el('titleScreen').classList.add('hide');
+      resize();
+      openChapter(0);
+    };
+
+    /* ==========================================================================
+       体験1: 火を絶やさない（原人）
+       ==========================================================================
+       「火をおこす」ではなく「火を守る」。
+       原人が自ら発火させられた証拠はなく、山火事などで得た火を持ち帰って
+       維持していたと考えられているため、操作もそれに合わせている。 */
+    const fire = { fuel: 100, held: 0, goal: 600, alive: true, sparks: [] };
+
+    function startFire() {
+      fire.fuel = 62; fire.held = 0; fire.alive = true; fire.sparks = [];
+      el('gaugeWrap').classList.add('show');
+      el('gaugeName').textContent = '火の勢い';
+    }
+
+    function addFuel(x, y) {
+      if (state !== 'play' || CHAPTERS[chapterIndex].interaction !== 'fire') return;
+      fire.fuel = Math.min(100, fire.fuel + 17);
+      for (let i = 0; i < 14; i++) {
+        fire.sparks.push({
+          x: W * 0.5 + (Math.random() - 0.5) * 40,
+          y: H * 0.56,
+          vx: (Math.random() - 0.5) * 2.2,
+          vy: -(Math.random() * 3.4 + 1.2),
+          life: 40 + Math.random() * 25
+        });
+      }
+    }
+
+    function updateFire() {
+      const c = CHAPTERS[chapterIndex];
+      if (!c || c.interaction !== 'fire' || state !== 'play') return;
+      fire.fuel -= 0.30;
+      if (fire.fuel <= 0) { fire.fuel = 0; fire.held = Math.max(0, fire.held - 3); }
+      else fire.held++;
+
+      for (let i = fire.sparks.length - 1; i >= 0; i--) {
+        const s = fire.sparks[i];
+        s.x += s.vx; s.y += s.vy; s.vy += 0.045; s.life--;
+        if (s.life <= 0) fire.sparks.splice(i, 1);
+      }
+
+      const pct = Math.round(fire.fuel);
+      el('gaugeVal').textContent = pct + '%';
+      el('gaugeFill').style.width = pct + '%';
+      el('gaugeFill').classList.toggle('low', pct < 25);
+
+      if (fire.fuel < 22) el('prompt').innerHTML = '火が消えそうだ。<em>タップして薪をくべろ</em>。';
+      else el('prompt').innerHTML = c.prompt;
+
+      if (fire.held >= fire.goal) finishInteraction();
+    }
+
+    /* ==========================================================================
+       シーン描画（時代ごとの背景）
+       ========================================================================== */
+    const SKY = {
+      forest: ['#16233a', '#2b4a52', '#4a6b4a'],
+      ice:    ['#0b1a3a', '#1e3d6b', '#8fc7dd'],
+      cave:   ['#1a1208', '#2e1f10', '#4a3018'],
+      field:  ['#1b2a4a', '#3b5a8a', '#c2a06a'],
+      future: ['#000000', '#141a3a', '#2c2c54']
+    };
+
+    function drawScene() {
+      const c = CHAPTERS[chapterIndex] || CHAPTERS[0];
+      const pal = SKY[c.scene] || SKY.forest;
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, pal[0]); g.addColorStop(0.55, pal[1]); g.addColorStop(1, pal[2]);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+
+      const groundY = H * 0.72;
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, groundY, W, H - groundY);
+
+      // 遠景の木のシルエット（森）
+      if (c.scene === 'forest') {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        for (let i = 0; i < 7; i++) {
+          const x = (i * 0.16 + 0.03) * W;
+          const h = H * (0.16 + ((i * 37) % 10) / 90);
+          ctx.fillRect(x - 4, groundY - h, 8, h);
+          ctx.beginPath();
+          ctx.arc(x, groundY - h, h * 0.34, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      if (c.interaction === 'fire') drawFire(groundY);
+    }
+
+    function drawFire(groundY) {
+      const cx = W * 0.5, base = groundY - 6;
+      const power = fire.fuel / 100;
+
+      ctx.fillStyle = '#3a2a1a';                    // 薪
+      ctx.fillRect(cx - 34, base - 8, 68, 10);
+      ctx.fillRect(cx - 24, base - 15, 48, 9);
+
+      if (power > 0.02) {
+        const t = frame * 0.22;
+        [['#ff2d00', 1.0], ['#ff8c42', 0.68], ['#ffe08a', 0.36]].forEach(([col, sc], k) => {
+          ctx.fillStyle = col;
+          ctx.globalAlpha = 0.55 + power * 0.45;
+          ctx.beginPath();
+          ctx.moveTo(cx, base - 14);
+          const hgt = (28 + power * 92) * sc;
+          for (let i = 0; i <= 12; i++) {
+            const p = i / 12;
+            const sway = Math.sin(t + p * 4.5 + k) * (9 * p * power);
+            const rad = (16 + power * 26) * sc * Math.sin(Math.PI * p);
+            ctx.lineTo(cx + sway + rad * (i % 2 ? 1 : -1), base - 14 - p * hgt);
+          }
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = '#ffd08a';                    // 火の粉
+      fire.sparks.forEach(s => {
+        ctx.globalAlpha = Math.max(0, s.life / 60);
+        ctx.fillRect(s.x, s.y, 3, 3);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    /* ==========================================================================
+       入力（タップ）
+       ========================================================================== */
+    function onTap(e) {
+      if (state !== 'play') return;
+      const c = CHAPTERS[chapterIndex];
+      if (c && c.interaction === 'fire') { e.preventDefault(); addFuel(); }
+    }
+    canvas.addEventListener('touchstart', onTap, { passive: false });
+    canvas.addEventListener('mousedown', onTap);
+
+    /* ==========================================================================
+       メインループ（60fps固定）
+       ========================================================================== */
+    const DT = 1000 / 60;
+    let last = 0, acc = 0;
+
+    function loop(now) {
+      requestAnimationFrame(loop);
+      if (!last) { last = now; return; }
+      let d = now - last; last = now;
+      if (d > 200) d = DT;
+      acc += d;
+      let steps = 0;
+      while (acc >= DT && steps < 5) { frame++; updateFire(); acc -= DT; steps++; }
+      drawScene();
+    }
+
+    resize();
+    renderDots();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
