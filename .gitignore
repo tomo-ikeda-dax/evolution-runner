@@ -4,3 +4,8 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# 作画の下書き（AI生成の見本。コードからは使っていない）
+assets/evolution_sprites.jpg
+assets/running_cycles.jpg
+assets/running_evolution.jpg
